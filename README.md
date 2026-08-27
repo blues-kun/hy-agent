@@ -203,15 +203,15 @@ MitoEvidence 不是“再做一个医学聊天机器人”，而是以现有 `hy
 
 ## 4. 总体架构
 
-### 4.1 四平面架构
+### 4.1 五步可信闭环
 
 <p align="center">
   <a href="assets/mitoevidence-architecture.html">
-    <img src="assets/mitoevidence-architecture.jpg" alt="MitoEvidence 证据优先的医学 Agent 与评测架构" width="100%" />
+    <img src="assets/mitoevidence-architecture.jpg" alt="MitoEvidence 从科研问题到可信评测的五步闭环架构" width="100%" />
   </a>
 </p>
 
-<p align="center"><sub>科研问题 → Mito-Agent → 冻结证据 → OpenCompass / MitoEvidence-Eval。点击图片可查看可编辑 HTML 源文件。</sub></p>
+<p align="center"><sub>科研提问 → 检索证据 → 生成核验 → 安全决策 → 离线评测；下方为可信证据底座与四层评测器。点击图片可查看可编辑 HTML 源文件。</sub></p>
 
 ### 4.2 三条架构硬规则
 
@@ -806,4 +806,3 @@ gantt
 
 > [!NOTE]
 > 六天版本只承诺完成最小可演示闭环；真正图像语义、多模型扩展、KGE、GRPO 和大规模专家验证放入后续迭代。
-
