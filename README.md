@@ -741,7 +741,7 @@ benchmark_id
 
 ### 8.7 通用 Benchmark 的位置
 
-MMLU-Pro、C-Eval、MATH、GPQA、EvalPlus、LongBench 等只用于：
+MMLU-Pro、C-Eval、GSM8K、GPQA、EvalPlus、LongBench 等只用于：
 
 - 底座能力画像；
 - 升级或训练后的回归检查；
@@ -963,8 +963,7 @@ hy-agent/
 │   ├── ANNOTATION_GUIDE_ZH.md
 │   └── RELEASE_CHECKLIST.md
 ├── configs/
-├── tests/
-└── README.md
+└── tests/
 ~~~
 
 ### 12.3 最小复现入口
