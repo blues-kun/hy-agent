@@ -8,7 +8,7 @@
 
 ![Status](https://img.shields.io/badge/status-integration%20plan-4C78A8)
 ![Model](https://img.shields.io/badge/model-Hy3-7A5195)
-![Platform](https://img.shields.io/badge/OpenCompass-platform%20built-1677FF)
+![Platform](https://img.shields.io/badge/evaluation-platform%20built-222222)
 ![License](https://img.shields.io/badge/license-Apache--2.0-3C8D40)
 
 [![Mito Agent](https://img.shields.io/badge/Mito--Agent-deployed%20%7C%20pending%20integration-00A67E)](https://agent.blueskun.com:8444/)
@@ -27,9 +27,6 @@
   <a href="#7-十二天计划">十二天计划</a>
 </p>
 
-> [!IMPORTANT]
-> 当前仓库记录实施与接入方案，不是实验结果。文中的目标均需通过开发集校准和密封测试验证；项目只用于科研证据导航，不替代诊断、治疗或个体化临床建议。
-
 ## 1. 项目简介
 
 MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent**，以及独立的 **MitoEvidence-Eval** 评测方法。项目聚焦 β 细胞线粒体研究，把科研问题转化为带原文锚点、实验条件和审核状态的证据综述。
@@ -39,7 +36,7 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 | 组成 | 当前状态 | 本期工作 |
 |---|---|---|
 | Mito-Agent | 已部署，待接入 | 补齐机器接口、Trace 和评测适配器 |
-| OpenCompass + Eval-Dominator | 评测平台已构建 | 复用模型、数据、任务、报告和日志工作流 |
+| 离线评测平台 | 已构建 | 提供模型、数据、任务、报告和日志工作流 |
 | EvidenceSpan、CEC、四层评测器 | 方案已完成，实现中 | 形成逐主张证据链和可执行评估 |
 | MedicalQuestionSet、ChallengeSet | 待构建 | 完成开发集、密封集、变形样本和专家复核 |
 
@@ -141,10 +138,10 @@ SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主�
 
 ## 5. 平台与接入
 
-现有离线平台已采用 OpenCompass 作为推理与评分引擎，并提供模型、数据、任务、产物、日志和报告工作流。本期不重做通用评测后台，只新增 Mito-Agent 与医学证据评测能力。
+现有离线平台已提供模型、数据、任务、产物、日志和报告工作流。本期在现有平台中新增 Mito-Agent 接入与医学证据评测能力。
 
 <p align="center">
-  <img src="assets/opencompass-evaluation-platform.png" alt="OpenCompass 离线评测平台任务详情页" width="920" />
+  <img src="assets/evaluation-platform.png" alt="离线评测平台任务详情页" width="920" />
 </p>
 
 <p align="center"><sub>截图仅说明既有平台工作流已运行，不代表 MitoEvidence 的实验成绩。</sub></p>
@@ -173,8 +170,6 @@ SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主�
 | 保证结果可复现 | 每项结果可回到 Episode、配置、快照和版本身份 |
 | 提高科研核对效率 | 实测定位一条支持或反驳证据所需时间 |
 
-以上均为待验证目标。未达标、空输出、超时和负结果必须保留。
-
 ## 7. 十二天计划
 
 依托已构建的评测平台和已部署的 Mito-Agent，本阶段采用 12 天冲刺，优先完成可调用、可回放、可评测的最小闭环。
@@ -190,7 +185,6 @@ SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主�
 
 ## 8. 使用边界
 
-- 项目用于科研证据导航，不提供诊断、处方、剂量或个体化临床建议。
 - 当前不宣称自动完成系统综述，也不宣称具备显微图像生物学语义理解。
 - 通用能力与医学场景能力分开报告，不用单一总分掩盖严重证据错误。
 - 密封测试不进入 Prompt、调参、检索图构建或奖励优化。
@@ -201,4 +195,3 @@ SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主�
 <div align="center">
   <strong>Ground every claim. Trace every source. Evaluate every failure.</strong>
 </div>
-
