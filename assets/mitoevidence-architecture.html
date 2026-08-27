@@ -6,18 +6,13 @@
   <title>MitoEvidence 五步可信闭环</title>
   <style>
     :root {
-      --bg: #07111f;
-      --surface: #0d1c30;
-      --line: #27415f;
-      --text: #f3f8ff;
-      --muted: #b5c6da;
-      --blue: #64b5ff;
-      --cyan: #51d6d1;
-      --indigo: #8ea2ff;
-      --amber: #ffc46b;
-      --violet: #bd9bff;
-      --green: #68e0ad;
-      --danger: #ff8d9d;
+      --ink: #151515;
+      --muted: #5d5d5d;
+      --paper: #faf9f5;
+      --white: #ffffff;
+      --soft: #efeee9;
+      --soft-2: #e4e3dd;
+      --line: #222222;
     }
 
     * { box-sizing: border-box; }
@@ -28,8 +23,8 @@
       height: 1000px;
       margin: 0;
       overflow: hidden;
-      color: var(--text);
-      background: var(--bg);
+      color: var(--ink);
+      background: #deddd7;
       font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
     }
 
@@ -38,42 +33,25 @@
       width: 1600px;
       height: 1000px;
       overflow: hidden;
-      background:
-        radial-gradient(circle at 12% 8%, rgba(75, 183, 255, .17), transparent 26%),
-        radial-gradient(circle at 91% 20%, rgba(189, 155, 255, .13), transparent 23%),
-        linear-gradient(145deg, #07111f 0%, #09172a 52%, #07111f 100%);
-      isolation: isolate;
-    }
-
-    .canvas::before {
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      content: "";
-      opacity: .2;
-      background-image:
-        linear-gradient(rgba(124, 162, 205, .12) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124, 162, 205, .12) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: linear-gradient(to bottom, #000 0%, transparent 72%);
+      background: var(--paper);
     }
 
     header {
       height: 142px;
-      padding: 30px 68px 24px;
+      padding: 28px 68px 22px;
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      border-bottom: 1px solid rgba(111, 151, 196, .2);
-      background: linear-gradient(180deg, rgba(13, 29, 50, .94), rgba(7, 17, 31, .55));
+      border-bottom: 2px solid var(--ink);
+      background: var(--white);
     }
 
     .eyebrow {
-      margin-bottom: 6px;
-      color: var(--cyan);
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: .16em;
+      margin-bottom: 7px;
+      color: #3f3f3f;
+      font-size: 14px;
+      font-weight: 850;
+      letter-spacing: .18em;
     }
 
     h1 {
@@ -87,13 +65,12 @@
       margin-top: 8px;
       color: var(--muted);
       font-size: 17px;
-      letter-spacing: .01em;
     }
 
     .status-group {
       display: flex;
       gap: 10px;
-      padding-top: 20px;
+      padding-top: 21px;
     }
 
     .status {
@@ -102,116 +79,80 @@
       gap: 9px;
       height: 39px;
       padding: 0 15px;
-      border: 1px solid rgba(124, 165, 211, .3);
+      border: 1.5px solid var(--ink);
       border-radius: 999px;
-      color: #dceaff;
-      background: rgba(18, 39, 65, .9);
+      color: var(--ink);
+      background: var(--white);
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 750;
       white-space: nowrap;
     }
 
     .status i {
-      width: 9px;
-      height: 9px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 14px rgba(104, 224, 173, .72);
+      background: var(--ink);
     }
 
-    main { padding: 18px 68px 0; }
+    main { padding: 17px 68px 0; }
 
     .section-kicker {
       display: flex;
       align-items: center;
-      gap: 12px;
-      height: 29px;
-      color: #d8e6f7;
+      gap: 11px;
+      height: 30px;
+      color: #303030;
       font-size: 15px;
-      font-weight: 800;
-      letter-spacing: .08em;
+      font-weight: 850;
+      letter-spacing: .07em;
     }
 
     .section-kicker::before {
-      width: 26px;
-      height: 3px;
-      border-radius: 999px;
+      width: 28px;
+      height: 4px;
       content: "";
-      background: linear-gradient(90deg, var(--blue), var(--cyan));
-      box-shadow: 0 0 15px rgba(81, 214, 209, .42);
+      background: var(--ink);
     }
 
     .flow {
       display: grid;
       grid-template-columns: 252px 49px 252px 49px 252px 49px 252px 49px 252px;
-      align-items: stretch;
       width: 1464px;
       height: 282px;
       margin-top: 7px;
     }
 
     .stage {
-      --accent: var(--blue);
       position: relative;
       min-width: 0;
-      overflow: hidden;
-      padding: 22px 20px 18px;
-      border: 1px solid rgba(120, 160, 204, .28);
-      border-radius: 22px;
-      background: linear-gradient(155deg, rgba(20, 43, 70, .97), rgba(11, 27, 47, .98));
-      box-shadow: 0 16px 35px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .05);
+      padding: 21px 19px 17px;
+      border: 1.7px solid var(--ink);
+      border-radius: 18px;
+      background: var(--white);
+      box-shadow: 7px 7px 0 var(--soft-2);
     }
-
-    .stage::before {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 5px;
-      content: "";
-      background: var(--accent);
-      box-shadow: 0 0 22px var(--accent);
-    }
-
-    .stage::after {
-      position: absolute;
-      right: -48px;
-      bottom: -55px;
-      width: 150px;
-      height: 150px;
-      border-radius: 50%;
-      content: "";
-      background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 68%);
-    }
-
-    .stage-1 { --accent: var(--blue); }
-    .stage-2 { --accent: var(--cyan); }
-    .stage-3 { --accent: var(--indigo); }
-    .stage-4 { --accent: var(--amber); }
-    .stage-5 { --accent: var(--violet); }
 
     .stage-head {
-      position: relative;
-      z-index: 1;
       display: flex;
       align-items: center;
       gap: 13px;
       margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #d5d5d1;
     }
 
     .stage-no {
       display: grid;
       place-items: center;
-      flex: 0 0 46px;
-      width: 46px;
-      height: 46px;
-      border: 1px solid color-mix(in srgb, var(--accent) 62%, transparent);
-      border-radius: 15px;
-      color: #071421;
-      background: var(--accent);
-      font-size: 18px;
+      flex: 0 0 45px;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      color: var(--white);
+      background: var(--ink);
+      font-size: 17px;
       font-weight: 900;
-      box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 22%, transparent);
     }
 
     .stage h2 {
@@ -222,18 +163,14 @@
     }
 
     .stage p {
-      position: relative;
-      z-index: 1;
       min-height: 48px;
       margin: 0 0 14px;
-      color: #d6e2f1;
+      color: #3d3d3d;
       font-size: 17px;
       line-height: 1.45;
     }
 
     .tags {
-      position: relative;
-      z-index: 1;
       display: flex;
       flex-wrap: wrap;
       gap: 7px;
@@ -244,17 +181,15 @@
       align-items: center;
       min-height: 31px;
       padding: 5px 9px;
-      border: 1px solid rgba(145, 177, 211, .2);
-      border-radius: 9px;
-      color: #c8d8ea;
-      background: rgba(5, 18, 33, .64);
+      border: 1px solid #c9c9c5;
+      border-radius: 7px;
+      color: #272727;
+      background: var(--soft);
       font-size: 14px;
-      font-weight: 650;
+      font-weight: 680;
     }
 
     .decision-grid {
-      position: relative;
-      z-index: 1;
       display: grid;
       gap: 7px;
     }
@@ -265,48 +200,43 @@
       justify-content: space-between;
       height: 32px;
       padding: 0 10px;
-      border: 1px solid rgba(255, 196, 107, .25);
-      border-radius: 9px;
-      color: #ffe4b7;
-      background: rgba(67, 44, 18, .42);
+      border: 1.4px solid var(--ink);
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--white);
       font-size: 13px;
-      font-weight: 850;
+      font-weight: 900;
     }
 
-    .decision span { color: #e9d0a8; font-size: 12px; font-weight: 600; }
+    .decision:nth-child(2) { background: var(--soft); }
 
-    .arrow {
+    .decision:nth-child(3) {
+      color: var(--white);
+      background: var(--ink);
+    }
+
+    .decision span {
+      color: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      opacity: .82;
+    }
+
+    .connector {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
+      color: var(--ink);
+      font-size: 34px;
+      font-weight: 400;
     }
 
-    .arrow::before {
-      width: 31px;
-      height: 4px;
-      border-radius: 999px;
-      content: "";
-      background: linear-gradient(90deg, rgba(103, 182, 255, .55), rgba(81, 214, 209, .95));
-      box-shadow: 0 0 15px rgba(81, 214, 209, .38);
-    }
-
-    .arrow::after {
+    .connector span {
       position: absolute;
-      right: 6px;
-      width: 14px;
-      height: 14px;
-      border-top: 4px solid var(--cyan);
-      border-right: 4px solid var(--cyan);
-      content: "";
-      transform: rotate(45deg);
-    }
-
-    .arrow span {
-      position: absolute;
-      top: 70px;
+      top: 72px;
       left: 50%;
-      color: #8fa7c1;
+      color: #646464;
       font-size: 12px;
       font-weight: 700;
       white-space: nowrap;
@@ -323,28 +253,27 @@
 
     .support-panel {
       position: relative;
-      padding: 19px 21px 18px;
-      border: 1px solid rgba(116, 158, 204, .26);
-      border-radius: 21px;
-      background: linear-gradient(160deg, rgba(15, 34, 57, .95), rgba(9, 24, 42, .96));
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+      padding: 18px 20px;
+      border: 1.7px solid var(--ink);
+      border-radius: 18px;
+      background: var(--soft);
     }
 
     .support-panel::before {
       position: absolute;
       top: -20px;
       left: 50%;
-      width: 2px;
+      width: 1.5px;
       height: 20px;
       content: "";
-      background: linear-gradient(to top, rgba(81, 214, 209, .75), transparent);
+      background: var(--ink);
     }
 
     .support-title {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
+      margin-bottom: 13px;
     }
 
     .support-title h3 {
@@ -353,30 +282,27 @@
       gap: 10px;
       margin: 0;
       font-size: 21px;
-      letter-spacing: -.01em;
     }
 
     .support-title h3 i {
       display: grid;
       place-items: center;
-      width: 31px;
-      height: 31px;
-      border-radius: 10px;
-      color: #061321;
-      background: var(--cyan);
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      color: var(--white);
+      background: var(--ink);
       font-style: normal;
       font-size: 15px;
       font-weight: 900;
     }
 
-    .eval-panel .support-title h3 i { background: var(--violet); }
-
     .mini-status {
       padding: 6px 10px;
-      border: 1px solid rgba(111, 202, 192, .34);
+      border: 1px solid #8b8b88;
       border-radius: 999px;
-      color: #a8eee5;
-      background: rgba(19, 68, 66, .42);
+      color: #414141;
+      background: var(--white);
       font-size: 12px;
       font-weight: 800;
     }
@@ -388,35 +314,53 @@
     }
 
     .evidence-card {
-      min-height: 158px;
-      padding: 15px 13px;
-      border: 1px solid rgba(92, 188, 207, .22);
-      border-radius: 15px;
-      background: rgba(10, 30, 49, .9);
-    }
-
-    .evidence-card b {
-      display: block;
-      margin-bottom: 9px;
-      color: #f1f8ff;
-      font-size: 16px;
-      line-height: 1.25;
-    }
-
-    .evidence-card span {
-      color: #aec2d6;
-      font-size: 14px;
-      line-height: 1.55;
+      min-height: 160px;
+      padding: 14px 13px;
+      border: 1.3px solid #747472;
+      border-radius: 12px;
+      background: var(--white);
     }
 
     .evidence-card em {
       display: inline-block;
       margin-bottom: 9px;
-      color: var(--cyan);
+      color: #555;
       font-style: normal;
       font-size: 12px;
       font-weight: 900;
-      letter-spacing: .08em;
+      letter-spacing: .06em;
+    }
+
+    .evidence-card b {
+      display: block;
+      margin-bottom: 9px;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .evidence-card span {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .eval-panel {
+      color: var(--white);
+      background: var(--ink);
+    }
+
+    .eval-panel::before { background: var(--ink); }
+
+    .eval-panel .support-title h3 i {
+      color: var(--ink);
+      background: var(--white);
+    }
+
+    .eval-panel .mini-status {
+      border-color: #767676;
+      color: var(--white);
+      background: #2a2a2a;
     }
 
     .eval-flow {
@@ -431,15 +375,16 @@
       place-items: center;
       height: 76px;
       padding: 8px 5px;
-      border: 1px solid rgba(189, 155, 255, .28);
-      border-radius: 13px;
-      background: rgba(38, 28, 69, .5);
+      border: 1px solid #747474;
+      border-radius: 11px;
+      color: var(--ink);
+      background: var(--white);
       text-align: center;
     }
 
-    .eval-step b { color: #dac9ff; font-size: 16px; }
-    .eval-step span { color: #c5b8dd; font-size: 12px; line-height: 1.25; }
-    .eval-arrow { color: #9e84db; font-size: 20px; font-weight: 900; text-align: center; }
+    .eval-step b { font-size: 16px; }
+    .eval-step span { color: #4f4f4f; font-size: 12px; line-height: 1.25; }
+    .eval-arrow { color: #bdbdbd; font-size: 22px; text-align: center; }
 
     .metrics {
       display: grid;
@@ -451,14 +396,15 @@
     .metric {
       height: 55px;
       padding: 8px 4px;
-      border: 1px solid rgba(136, 164, 199, .23);
-      border-radius: 11px;
-      background: rgba(7, 21, 37, .72);
+      border: 1px solid #6e6e6e;
+      border-radius: 9px;
+      color: var(--white);
+      background: #292929;
       text-align: center;
     }
 
-    .metric b { display: block; color: #f1f6ff; font-size: 15px; }
-    .metric span { color: #9fb4ca; font-size: 11px; }
+    .metric b { display: block; font-size: 15px; }
+    .metric span { color: #c9c9c9; font-size: 11px; }
 
     .feedback {
       display: grid;
@@ -466,10 +412,10 @@
       align-items: center;
       height: 84px;
       margin-top: 16px;
-      padding: 0 24px;
-      border: 1px solid rgba(255, 196, 107, .24);
-      border-radius: 19px;
-      background: linear-gradient(90deg, rgba(62, 43, 19, .48), rgba(22, 36, 56, .78), rgba(34, 27, 63, .58));
+      overflow: hidden;
+      border: 1.7px solid var(--ink);
+      border-radius: 17px;
+      background: var(--white);
     }
 
     .feedback-item {
@@ -477,6 +423,7 @@
       align-items: center;
       gap: 12px;
       min-width: 0;
+      padding: 0 23px;
     }
 
     .feedback-icon {
@@ -485,25 +432,27 @@
       flex: 0 0 38px;
       width: 38px;
       height: 38px;
-      border-radius: 12px;
-      color: #071421;
-      background: var(--amber);
+      border-radius: 10px;
+      color: var(--white);
+      background: var(--ink);
       font-size: 16px;
       font-weight: 950;
       font-style: normal;
     }
 
     .feedback-item b { display: block; margin-bottom: 3px; font-size: 16px; }
-    .feedback-item span { color: #b8c8da; font-size: 13px; }
-    .feedback-arrow { color: #7791ae; font-size: 28px; text-align: center; }
+    .feedback-item span { color: #5a5a5a; font-size: 13px; }
+    .feedback-arrow { color: #555; font-size: 28px; text-align: center; }
 
     .lock-note {
       display: flex;
       align-items: center;
+      align-self: stretch;
       gap: 12px;
       min-width: 0;
-      padding-left: 15px;
-      border-left: 1px solid rgba(255, 141, 157, .28);
+      padding: 0 24px;
+      color: var(--white);
+      background: var(--ink);
     }
 
     .lock {
@@ -512,16 +461,17 @@
       flex: 0 0 39px;
       width: 39px;
       height: 39px;
-      border: 1px solid rgba(255, 141, 157, .4);
-      border-radius: 12px;
-      color: var(--danger);
-      background: rgba(88, 27, 39, .34);
-      font-size: 20px;
+      border: 1px solid #858585;
+      border-radius: 10px;
+      color: var(--ink);
+      background: var(--white);
+      font-size: 17px;
       font-style: normal;
+      font-weight: 900;
     }
 
-    .lock-note b { display: block; margin-bottom: 3px; color: #ffd0d7; font-size: 16px; }
-    .lock-note span { color: #c5aeb6; font-size: 13px; }
+    .lock-note b { display: block; margin-bottom: 3px; font-size: 16px; }
+    .lock-note span { color: #c9c9c9; font-size: 13px; }
 
     footer {
       position: absolute;
@@ -531,11 +481,11 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: #849bb5;
+      color: #666;
       font-size: 12px;
     }
 
-    footer strong { color: #b9ccdf; }
+    footer strong { color: var(--ink); }
   </style>
 </head>
 <body>
@@ -543,11 +493,11 @@
     <header>
       <div>
         <div class="eyebrow">HY-AGENT · MITOEVIDENCE</div>
-        <h1>一张图看懂：从科研问题到可信评测</h1>
-        <div class="subtitle">让每个结论有证据、每次运行可回放、每个版本可比较</div>
+        <h1>MitoEvidence 可信评测闭环</h1>
+        <div class="subtitle">每个结论有证据 · 每次运行可回放 · 每个版本可比较</div>
       </div>
       <div class="status-group" aria-label="当前建设状态">
-        <span class="status"><i></i>Mito-Agent 已落地 · 待接入</span>
+        <span class="status"><i></i>Mito-Agent 已部署 · 待接入</span>
         <span class="status"><i></i>OpenCompass 评测平台已构建</span>
       </div>
     </header>
@@ -556,42 +506,42 @@
       <div class="section-kicker">五步主流程 · 从输入到可信结论</div>
 
       <section class="flow" aria-label="五步主流程">
-        <article class="stage stage-1">
+        <article class="stage">
           <div class="stage-head"><span class="stage-no">01</span><h2>科研提问</h2></div>
-          <p>先把自然语言问题变成可检索、可比较的条件化任务。</p>
+          <p>把自然语言问题转成可检索、可比较的条件化任务。</p>
           <div class="tags">
             <span class="tag">物种 · 细胞</span><span class="tag">扰动 · 剂量</span>
             <span class="tag">时长 · 结局</span><span class="tag">时间范围</span>
           </div>
         </article>
 
-        <div class="arrow"><span>结构化</span></div>
+        <div class="connector">→<span>结构化</span></div>
 
-        <article class="stage stage-2">
+        <article class="stage">
           <div class="stage-head"><span class="stage-no">02</span><h2>检索证据</h2></div>
-          <p>从冻结语料中召回、排序并筛选真正相关的证据片段。</p>
+          <p>从冻结语料中召回、排序并筛选相关证据片段。</p>
           <div class="tags">
             <span class="tag">BM25 + Dense</span><span class="tag">Rerank</span>
             <span class="tag">条件过滤</span><span class="tag">原文定位</span>
           </div>
         </article>
 
-        <div class="arrow"><span>引用绑定</span></div>
+        <div class="connector">→<span>引用绑定</span></div>
 
-        <article class="stage stage-3">
+        <article class="stage">
           <div class="stage-head"><span class="stage-no">03</span><h2>生成核验</h2></div>
-          <p>逐主张生成综述，并检查引用、条件、效应方向与冲突。</p>
+          <p>逐主张生成综述，核对引用、条件、方向与冲突。</p>
           <div class="tags">
             <span class="tag">证据矩阵</span><span class="tag">逐主张综述</span>
             <span class="tag">冲突识别</span><span class="tag">一次补检</span>
           </div>
         </article>
 
-        <div class="arrow"><span>安全门控</span></div>
+        <div class="connector">→<span>安全门控</span></div>
 
-        <article class="stage stage-4">
+        <article class="stage">
           <div class="stage-head"><span class="stage-no">04</span><h2>安全决策</h2></div>
-          <p>证据不足时不强答，把风险明确交给系统或专家处理。</p>
+          <p>证据不足时不强答，把风险交给系统或专家处理。</p>
           <div class="decision-grid">
             <div class="decision">ANSWER <span>证据充分</span></div>
             <div class="decision">ABSTAIN <span>主动拒答</span></div>
@@ -599,9 +549,9 @@
           </div>
         </article>
 
-        <div class="arrow"><span>冻结 Episode</span></div>
+        <div class="connector">→<span>冻结 Episode</span></div>
 
-        <article class="stage stage-5">
+        <article class="stage">
           <div class="stage-head"><span class="stage-no">05</span><h2>离线评测</h2></div>
           <p>封存输入、轨迹、证据与版本，统一进入 OpenCompass。</p>
           <div class="tags">
@@ -612,7 +562,7 @@
       </section>
 
       <section class="support" aria-label="两层支撑能力">
-        <article class="support-panel evidence-panel">
+        <article class="support-panel">
           <div class="support-title">
             <h3><i>证</i>可信证据底座</h3>
             <span class="mini-status">只读快照 · SHA-256</span>
@@ -654,7 +604,8 @@
       </section>
     </main>
 
-    <footer><span><strong>主线：</strong>科研提问 → 检索证据 → 生成核验 → 安全决策 → 离线评测</span><span>MitoEvidence Architecture · V1.2</span></footer>
+    <footer><span><strong>主线：</strong>科研提问 → 检索证据 → 生成核验 → 安全决策 → 离线评测</span><span>MitoEvidence Architecture · V1.3</span></footer>
   </section>
 </body>
 </html>
+
