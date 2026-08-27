@@ -1,31 +1,24 @@
 <div align="center">
 
-# 🧬 Hy-Agent · MitoEvidence
+# Hy-Agent · MitoEvidence
 
 ### 面向 β 细胞线粒体研究的可追溯证据综述与评测方案
 
-**Claim–Evidence–Condition Evaluation for Auditable Scientific Synthesis**
-
-![Status](https://img.shields.io/badge/status-integration%20plan-4C78A8)
-![Model](https://img.shields.io/badge/model-Hy3-7A5195)
-![Platform](https://img.shields.io/badge/evaluation-platform%20built-222222)
-![License](https://img.shields.io/badge/license-Apache--2.0-3C8D40)
-
-[![Mito Agent](https://img.shields.io/badge/Mito--Agent-deployed%20%7C%20pending%20integration-00A67E)](https://agent.blueskun.com:8444/)
-
-<sub>腾讯犀牛鸟 2026 · 开放式场景 AI 应用与评判标准设计 · 方案版本 V1.2</sub>
+![Model](https://img.shields.io/badge/MODEL-Hy3-111111?style=flat-square)
+![Platform](https://img.shields.io/badge/PLATFORM-BUILT-555555?style=flat-square)
+[![Mito Agent](https://img.shields.io/badge/MITO--AGENT-DEPLOYED-111111?style=flat-square)](https://agent.blueskun.com:8444/)
 
 </div>
 
 <p align="center">
   <a href="#1-项目简介">项目简介</a> ·
   <a href="#2-总体架构">总体架构</a> ·
-  <a href="#3-重点技术">重点技术</a> ·
   <a href="#4-评测方法">评测方法</a> ·
   <a href="#5-平台与接入">平台与接入</a> ·
-  <a href="#6-预期效果">预期效果</a> ·
   <a href="#7-十二天计划">十二天计划</a>
 </p>
+
+---
 
 ## 1. 项目简介
 
@@ -33,19 +26,11 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 
 > **医学 Agent 回答得像专家，不等于证据可信。结论必须能回到原文，实验条件必须可核验，严重错误必须能被独立评测。**
 
-| 组成 | 当前状态 | 本期工作 |
+| 组成 | 状态 | 本期工作 |
 |---|---|---|
-| Mito-Agent | 已部署，待接入 | 补齐机器接口、Trace 和评测适配器 |
-| 离线评测平台 | 已构建 | 提供模型、数据、任务、报告和日志工作流 |
-| EvidenceSpan、CEC、四层评测器 | 方案已完成，实现中 | 形成逐主张证据链和可执行评估 |
-| MedicalQuestionSet、ChallengeSet | 待构建 | 完成开发集、密封集、变形样本和专家复核 |
-
-核心输出包括：
-
-- 证据矩阵：支持、反驳和证据不足分区；
-- 逐主张综述：每个关键结论绑定原文位置和实验条件；
-- 安全决策：`ANSWER`、`ABSTAIN`、`HUMAN_REVIEW`；
-- 评测报告：`SEER`、`D1–D10`、Hard Gate、成本与失败归因。
+| Mito-Agent | ● 已部署 · 待接入 | 机器接口、Trace、适配器 |
+| 离线评测平台 | ● 已构建 | 模型、数据、任务与报告 |
+| MitoEvidence-Eval | ◐ 实现中 | CEC、数据集、四层评测器 |
 
 ## 2. 总体架构
 
@@ -55,7 +40,7 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
   </a>
 </p>
 
-<p align="center"><sub>科研提问 → 检索证据 → 生成核验 → 安全决策 → 离线评测。点击图片可查看 HTML 源文件。</sub></p>
+<p align="center"><sub>五步主流程与可信证据、离线评测两层支撑能力</sub></p>
 
 设计遵循四条规则：
 
@@ -66,17 +51,17 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 
 ## 3. 重点技术
 
-| 模块 | 作用 | 最小交付 |
+| 模块 | 核心作用 | 输出 |
 |---|---|---|
-| 科研问题结构化 | 抽取物种、细胞、扰动、剂量、时长、方法与结局 | 条件化查询和必答子问题 |
-| EvidenceSpan | 定位章节、页码、图表、bbox 和原文片段 | 可点击回原文的证据锚 |
-| CEC | 绑定原子主张、原文证据和实验条件 | 可计算、可审核的证据单元 |
-| 混合检索 | BM25 + Dense + Rerank + 条件过滤 | 高召回候选和排序记录 |
-| 逐主张核验 | 检查引用、条件、效应方向和冲突，必要时补检一次 | 通过、拒答或转专家 |
-| EvidenceReviewEpisode | 冻结输入、轨迹、输出、证据、成本和版本身份 | 可回放的单次运行记录 |
+| 科研问题结构化 | 抽取物种、细胞、扰动、剂量、时长与结局 | 条件化问题 |
+| EvidenceSpan | 定位章节、页码、图表与原文片段 | 原文证据锚 |
+| CEC | 绑定主张、证据和实验条件 | 可审核证据单元 |
+| 混合检索 | BM25 + Dense + Rerank + 条件过滤 | 候选证据与排序 |
+| 逐主张核验 | 核对引用、条件、效应方向和冲突 | 通过、拒答或转专家 |
+| EvidenceReviewEpisode | 冻结输入、轨迹、输出、证据和版本 | 可回放记录 |
 | 四层评测器 | L1 规则 → L2 证据 Judge → L3 Hard Gate → L4 专家 | 分数、门禁和失败原因 |
 
-本期只实现上述主链路。证据图、KGE、GRPO、学习型 Router 和真正的图像语义理解属于后续增强，不进入本期主结论。
+本期聚焦上述主链路；证据图、KGE、GRPO 与图像语义理解留作后续。
 
 ## 4. 评测方法
 
@@ -141,10 +126,10 @@ SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主�
 现有离线平台已提供模型、数据、任务、产物、日志和报告工作流。本期在现有平台中新增 Mito-Agent 接入与医学证据评测能力。
 
 <p align="center">
-  <img src="assets/evaluation-platform.png" alt="离线评测平台任务详情页" width="920" />
+  <img src="assets/evaluation-platform.png" alt="离线评测平台任务详情页" width="100%" />
 </p>
 
-<p align="center"><sub>截图仅说明既有平台工作流已运行，不代表 MitoEvidence 的实验成绩。</sub></p>
+<p align="center"><sub>已构建离线评测平台的任务详情与题级分析界面</sub></p>
 
 接入主链路：
 
@@ -157,7 +142,7 @@ SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主�
 | 身份冻结 | 模型、Prompt、语料、索引、工具、Runner、评估器和 seed |
 | 报告扩展 | SEER、D1–D10、Gate、成本、题级错误和专家队列 |
 
-[Mito-Agent 在线实例](https://agent.blueskun.com:8444/)已部署，授权凭据只通过私密渠道管理，不进入仓库、截图、日志或公开文档。
+[Mito-Agent 在线实例](https://agent.blueskun.com:8444/)已部署，当前等待机器接口与 Trace 接入。
 
 ## 6. 预期效果
 
@@ -182,13 +167,6 @@ SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主�
 | 第 7–8 天 | 实现评估器并构建挑战集 | D1–D10、SEER、L1–L3、ChallengeSet |
 | 第 9–10 天 | 元评估冻结，完成 S4 | 校准记录、四层评测器、完整闭环 |
 | 第 11–12 天 | 密封小测、结果整理和发布 | 失败归因、报告、复现入口和 README |
-
-## 8. 使用边界
-
-- 当前不宣称自动完成系统综述，也不宣称具备显微图像生物学语义理解。
-- 通用能力与医学场景能力分开报告，不用单一总分掩盖严重证据错误。
-- 密封测试不进入 Prompt、调参、检索图构建或奖励优化。
-- API Key、账号和受限材料不得进入公开仓库或 Git 历史。
 
 ---
 
