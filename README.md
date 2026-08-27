@@ -39,13 +39,6 @@
 - [8. 已构建评测平台与接入方案](#8-已构建评测平台与接入方案)
 - [9. 预期效果与验收线](#9-预期效果与验收线)
 - [10. 时间规划](#10-时间规划)
-- [11. 风险、降级与边界](#11-风险降级与边界)
-- [12. 交付物与仓库结构](#12-交付物与仓库结构)
-- [13. 两分钟 Demo 脚本](#13-两分钟-demo-脚本)
-- [14. 启动清单](#14-启动清单)
-- [附录 A：策略取舍记录](#附录-a策略取舍记录)
-- [附录 B：术语表](#附录-b术语表)
-- [附录 C：参考依据](#附录-c参考依据)
 
 ---
 
@@ -76,7 +69,7 @@ MitoEvidence 不是“再做一个医学聊天机器人”，而是以现有 `hy
 | 📊 **能力基线** | 通用知识、数学理工、多语言、代码、推理、上下文六类回归 | 只在同协议、同快照下形成可比较证据，不与医学分数混算 |
 | 🧪 **评估方法** | MitoEvidence-Eval、十维 Rubric、SEER、Hard Gate、挑战集 | 能复现专家判断并识别受控错误 |
 | 🔬 **科研应用** | 带原文锚、条件矩阵、冲突分区和拒答的快速证据综述 | 相对基线降低严重证据错误 |
-| 📦 **复现工程** | 配置化评测、不可变快照、完整 Episode、结果与 Demo | 任一正式分数均可回到版本、输入、轨迹与原始证据 |
+| 📦 **复现工程** | 配置化评测、不可变快照、完整 Episode、结果与展示页 | 任一正式分数均可回到版本、输入、轨迹与原始证据 |
 
 ---
 
@@ -130,8 +123,8 @@ MitoEvidence 不是“再做一个医学聊天机器人”，而是以现有 `hy
 |---|---|---|
 | ✅ 源码与手册可核验 | OpenCompass + Eval-Dominator 离线评测平台：模型/数据管理、六类目录、任务编排、题级分析、日志产物、报告与独立 Code Runner | 作为评测与实验编排底座复用；RC10 安全与发布门禁另行收口 |
 | ✅ 已落地、待接入 | [Mito-Agent 在线实例](https://agent.blueskun.com:8444/) | 作为真实医学实验与文献综述 Agent；补齐机器可调用接口、Trace 导出与评测适配器 |
-| ✅ 现有能力、待迁移核验 | Hy3 API 接入、证据绑定的多文档问答、子目标 DAG、引用白名单、单轮修复、拒绝未知引用、自动化测试与 Demo | 迁入 `hy-agent` 后逐项以测试和运行记录确认 |
-| 🟡 手稿报告、待入库核验 | MinerU、OvisOCR2、自有推理端点、约 3000 篇候选文献 | W1 提供版本、健康检查、样例输出和 SHA-256 后才能标记已完成 |
+| ✅ 现有能力、待迁移核验 | Hy3 API 接入、证据绑定的多文档问答、子目标 DAG、引用白名单、单轮修复、拒绝未知引用与自动化测试 | 迁入 `hy-agent` 后逐项以测试和运行记录确认 |
+| 🟡 手稿报告、待入库核验 | MinerU、OvisOCR2、自有推理端点、约 3000 篇候选文献 | D1 提供版本、健康检查、样例输出和 SHA-256 后才能标记已完成 |
 | 🟠 实现中/待开发 | CEC 抽取、EvidenceSpan 物理锚、十维 Rubric、评估执行器 | T1 主线 |
 | ⚪ 未开始 | MedicalQuestionSet、EvaluatorChallengeSet、专家标注与元评估 | T1 主线 |
 | 🔵 条件增强 | 证据图、KGE、GRPO、图像级检索 | 达门槛后再立项 |
@@ -200,7 +193,7 @@ MitoEvidence 不是“再做一个医学聊天机器人”，而是以现有 `hy
 
 | 原策略建议 | 本方案处理 | 原因 |
 |---|---|---|
-| 全量运行通用 Benchmark | 降为附录回归 | 与真实用户场景不是同一构念 |
+| 全量运行通用 Benchmark | 降为独立回归轨道 | 与真实用户场景不是同一构念 |
 | 3000 篇顶刊建图 | 改为可复现高召回检索 + 证据质量分层 | 避免期刊与正向结果选择偏差 |
 | 超图、KGE、GRPO 同期上线 | 分为 T2/T3 | 避免范围失控和消融混杂 |
 | 图文混合检索 | MVP 只做正文、图题、图注、表格与 OCR | Hy3 非原生视觉模型，不夸大图像理解 |
@@ -212,65 +205,13 @@ MitoEvidence 不是“再做一个医学聊天机器人”，而是以现有 `hy
 
 ### 4.1 四平面架构
 
-~~~mermaid
-flowchart TB
-    subgraph U["① 用户与审阅平面"]
-        U1["科研问题 + 条件约束"]
-        U2["证据矩阵 / 逐主张综述"]
-        U3["点击回原文 / 专家复核"]
-    end
+<p align="center">
+  <a href="assets/mitoevidence-architecture.html">
+    <img src="assets/mitoevidence-architecture.jpg" alt="MitoEvidence 证据优先的医学 Agent 与评测架构" width="100%" />
+  </a>
+</p>
 
-    subgraph R["② 在线 Agent 运行平面"]
-        R0["Mito-Agent Web/API<br/>已落地 · 待接入"]
-        R1["查询理解与条件抽取"]
-        R2["受预算控制的检索器"]
-        R3["BM25 + Dense + Rerank + 条件过滤"]
-        R4["多文献证据综合"]
-        R5["逐主张核验"]
-        R6{"决策"}
-        R7["ANSWER"]
-        R8["ABSTAIN"]
-        R9["HUMAN_REVIEW"]
-
-        R0 --> R1 --> R2 --> R3 --> R4 --> R5 --> R6
-        R6 --> R7
-        R6 --> R8
-        R6 --> R9
-        R5 -.补检一次.-> R2
-    end
-
-    subgraph G["③ 只读证据与快照平面"]
-        G1["Corpus Snapshot"]
-        G2["EvidenceSpan Index"]
-        G3["CEC Store"]
-        G4["Model / Prompt / Tool Manifest"]
-        G5["SHA-256 Artifact Manifest"]
-    end
-
-    subgraph E["④ 离线评测与控制平面"]
-        E0["OpenCompass + Eval-Dominator<br/>已构建评测平台"]
-        E1["冻结 EvidenceReviewEpisode"]
-        E2["L1 确定性规则"]
-        E3["L2 证据约束 Judge"]
-        E4["L3 Hard Gate"]
-        E5["L4 专家仲裁"]
-        E6["SEER + D1-D10 + 归因 + 成本"]
-        E7["Adapter / Task / Attempt / Cache / Report"]
-
-        E0 --> E1 --> E2 --> E3 --> E4 --> E5 --> E6 --> E7
-    end
-
-    U1 --> R0
-    R7 --> U2
-    R8 --> U2
-    R9 --> U3
-    G -.只读接地.-> R
-    G -.版本核验.-> E
-    R7 -.冻结.-> E1
-    R8 -.冻结.-> E1
-    R9 -.冻结.-> E1
-    U3 --> E5
-~~~
+<p align="center"><sub>科研问题 → Mito-Agent → 冻结证据 → OpenCompass / MitoEvidence-Eval。点击图片可查看可编辑 HTML 源文件。</sub></p>
 
 ### 4.2 三条架构硬规则
 
@@ -745,7 +686,7 @@ MMLU-Pro、C-Eval、GSM8K、GPQA、EvalPlus、LongBench 等只用于：
 
 - 底座能力画像；
 - 升级或训练后的回归检查；
-- 附录说明。
+- 方案内的底座回归说明。
 
 它们不进入医学场景总分，也不能代替 MitoEvidence-Eval 的有效性验证。
 
@@ -803,293 +744,66 @@ MMLU-Pro、C-Eval、GSM8K、GPQA、EvalPlus、LongBench 等只用于：
 
 ## 10. 时间规划
 
-### 10.1 资源假设
+> [!TIP]
+> 依托已构建的 OpenCompass 评测平台和已落地的 Mito-Agent，本阶段采用 **12 天冲刺**：先完成可演示、可回放、可评测的闭环，再扩展语料规模与研究验证。
 
-**W0 已有基础：** OpenCompass + Eval-Dominator 离线平台已构建，Mito-Agent 已在线运行，`hy-agent` 作为统一公开仓库。主计划不重复开发通用后台，优先完成 Adapter、Trace、领域数据集和评估器。
+### 10.1 十二天主计划
 
-12 周计划按以下最低配置估算：
+| 天数 | 阶段目标 | 核心动作 | 当日交付 |
+|---|---|---|---|
+| **D1** | 范围冻结 | 明确用户、题型、六类能力、医学主指标与安全边界 | Scope v1、接口清单 |
+| **D2** | Agent 接入 | 完成 MitoAgentAdapter、鉴权注入与单题调用 | 首个成功请求与脱敏日志 |
+| **D3** | Trace 闭环 | 统一输入、输出、工具轨迹与 EvidenceReviewEpisode | 可回放 Episode v1 |
+| **D4** | 六类能力基线 | 选择代表性公共协议完成 smoke，核对模型与数据身份 | 六类能力快照 v1 |
+| **D5** | 证据底座 | 接入 Pilot 语料、EvidenceSpan、CEC 基础 Schema | Corpus / Evidence v1 |
+| **D6** | 系统基线 | 跑通 S0–S3：直接生成、Dense、Hybrid、条件过滤 | 基线结果与典型 Case |
+| **D7** | 评估器初版 | 落地 D1–D10、L1/L2、SEER 与 Hard Gate | EV0–EV3 可执行版本 |
+| **D8** | 挑战集 | 构造引用错绑、条件偷换、方向反转与拒答样本 | ChallengeSet v1 |
+| **D9** | 元评估 | 检查判别力、一致性、稳定性与攻击检出 | 评估器校准记录 |
+| **D10** | 完整系统 | 接入逐主张核验、一次补检、ABSTAIN 与人工复核 | S4 端到端闭环 |
+| **D11** | 结果与界面 | 完成密封小测、失败归因、平台报告与视觉整理 | 结果表、截图、展示页 |
+| **D12** | 发布交付 | 核查凭据、链接、复现入口、README 与提交包 | 可展示版本 V1.0 |
 
-- 1 名技术负责人 / 后端；
-- 1 名检索与证据工程师；
-- 1 名评测与数据工程师；
-- 0.5 名界面 / DevOps 支持；
-- 2 名兼职领域研究者负责标注和裁决。
-
-若只有 1–2 名开发者，建议将主计划扩展至 16–20 周。
-
-### 10.2 十二周主计划
-
-| 周期 | 阶段 | 核心工作 | 交付物 | 进入门槛 |
-|---|---|---|---|---|
-| W1 | P0 接入冻结 | 冻结用户/题型/主终点；确认 Mito-Agent 调用方式、Trace 与凭据边界 | Scope v1、接口契约、风险清单 | Agent 与 Hy3 服务可联通 |
-| W2 | P1 平台接入 | 实现 MitoAgentAdapter、Episode 转换、单题 smoke、失败状态 | 首个端到端 Episode | 不通过 UI 抓取，凭据不落盘 |
-| W2–3 | P2 六类基线 | 选择代表性公共协议跑 smoke；对可报告项目运行 full 基线 | 六类能力画像 v1 | 协议、样本、模型身份可追溯 |
-| W3–4 | P3 语料与证据锚 | 150–300 篇 Pilot 摄取、元数据、EvidenceSpan、标注工具 | Corpus v1、定位审计、Schema | 关键 span 可回原文 |
-| W4–5 | P4 系统基线 | 完成 S0–S3、CEC 初版、快照、预算与失败归因 | 医学基线与首批 Case | 各版本可独立复现 |
-| W5–6 | P5 评估器 | D1–D10、L1/L2、Hard Gate、标注指南与校准题 | EV0–EV3、20 题校准集 | 规则与人工协议可执行 |
-| W6–7 | P6 挑战集 | 变形算子、manifest、不同来源原始输出 | ChallengeSet v1 | 每个变形可离线回放 |
-| W7–8 | **P7 评估器有效性** | 判别力、一致性、稳定性、对抗、不变性、构念效度 | 元评估报告、冻结 Evaluator | 达门槛或按预案降级 |
-| W9 | P8 完整核验系统 | S4、一次补检、拒答、人工复核队列 | T1 完整系统 | SEER 不劣于 S2 |
-| W10 | P9 密封测试 | 冻结测试、配对比较、统计与失败归因 | 正式结果表与 Case | 全部结果有 Episode |
-| W11 | P10 工程验收 | 安全、缓存、重启、复现、少量研究者试用 | QA 与效率记录 | 关键发布门禁关闭 |
-| W12 | P11 封装发布 | README、数据卡、Demo、离线复现与交付检查 | 完整提交包 | 空环境可复现核心结果 |
-
-### 10.3 甘特图
+### 10.2 十二天甘特图
 
 ~~~mermaid
 gantt
-    title MitoEvidence 12 周实施计划
+    title MitoEvidence 12 天冲刺计划
     dateFormat  YYYY-MM-DD
     axisFormat  %m/%d
 
-    section 范围与数据
-    接口冻结与 Agent 接入     :a1, 2026-08-31, 14d
-    语料摄取与 EvidenceSpan  :a2, 2026-09-14, 14d
+    section 接入
+    D1 范围冻结               :a1, 2026-08-28, 1d
+    D2 Agent 接入             :a2, 2026-08-29, 1d
+    D3 Trace 与 Episode       :a3, 2026-08-30, 1d
 
-    section 系统
-    六类能力基线             :b0, 2026-09-07, 14d
-    S0-S3 基线与 Episode     :b1, 2026-09-21, 14d
-    CEC 与逐主张评估         :b2, 2026-09-28, 14d
-    S4 核验与拒答            :b3, 2026-10-26, 7d
+    section 基线
+    D4 六类能力基线           :b1, 2026-08-31, 1d
+    D5 EvidenceSpan 与 CEC    :b2, 2026-09-01, 1d
+    D6 S0-S3 系统基线         :b3, 2026-09-02, 1d
 
-    section 评估器
-    Challenge Set            :c1, 2026-10-05, 14d
-    元评估与冻结             :crit, c2, 2026-10-19, 14d
+    section 评估
+    D7 评估器初版             :c1, 2026-09-03, 1d
+    D8 ChallengeSet           :c2, 2026-09-04, 1d
+    D9 元评估与校准           :crit, c3, 2026-09-05, 1d
+    D10 S4 完整闭环           :c4, 2026-09-06, 1d
 
     section 发布
-    密封测试与失败归因       :d1, 2026-11-02, 7d
-    安全、复现与用户试用     :d2, after d1, 7d
-    文档、Demo 与发布        :d3, after d2, 7d
+    D11 结果与界面            :d1, 2026-09-07, 1d
+    D12 发布交付              :milestone, d2, 2026-09-08, 0d
 ~~~
 
-### 10.4 六周最小路径
+### 10.3 六天最小路径
 
-若时间只有 6 周，明确砍掉 T2/T3、真正图像通道、跨模型验证和全量语料：
+| 天数 | 最小闭环 | 必须保留 | 暂缓内容 |
+|---|---|---|---|
+| **D1** | MitoAgentAdapter + Trace 契约 | 单题可调用、凭据不落盘 | 完整权限体系 |
+| **D2** | 代表性六类 smoke + Pilot 语料 | EvidenceSpan 可回原文 | 全量公共基准 |
+| **D3** | S0–S3 + CEC | 失败与空输出保留 | 大规模语料 |
+| **D4** | ChallengeSet + EV0–EV3 | 引用、条件和方向攻击 | T2/T3 |
+| **D5** | 元评估 + S4 | Hard Gate 与正确拒答 | 跨模型验证 |
+| **D6** | 密封小测 + 结果 + README | 可演示、可回放、可解释 | 图像语义理解 |
 
-~~~text
-W1  MitoAgentAdapter + Episode/Trace 契约 + 单题端到端 smoke
-W2  代表性六类基线 + 150 篇开放全文 + EvidenceSpan
-W3  S0–S3 + CEC + 40 题 Pilot + 双人抽检
-W4  Challenge Set + EV0–EV3
-W5  判别力 / 一致性 / 稳定性 / 对抗 + S4
-W6  密封小测 + 结果表 + 典型 Case + README + Demo
-~~~
-
-六周版本不保留图表题，或将其单列为未支持子集，不能一边删除图表通道、一边把图表题计入主比较。
-
----
-
-## 11. 风险、降级与边界
-
-| 风险 | 影响 | 预防 / 降级 |
-|---|---|---|
-| 文献选择偏差 | 正向结果与高影响期刊过表达 | 高召回检索、分层质量卡、禁止顶刊白名单充当真值 |
-| CEC 抽取不准 | 错误证据污染检索和评分 | 缩小语料、提高人工抽检、关键槽位人工补齐 |
-| 循环评测 | 生成与 Judge 自洽但错误 | L1/L4 锚点、盲评、逻辑隔离、专家一致性 |
-| 测试泄漏 | 结果虚高 | 问题/模板/标签/轨迹隔离，密封测试审计 |
-| 金标不完整 | Recall 与覆盖失真 | pooled retrieval、替代证据组、封闭世界声明 |
-| 评估器被投机 | 篇幅/术语刷分 | 投机变形、Hard Gate、单维度干预 |
-| 评估器过严 | 同义改写被扣分 | 等价不变性作为独立门槛 |
-| 多模态名不副实 | 宣称超过实际能力 | MVP 只做图题/图注/表格/OCR，视觉语义延期 |
-| Hy3 API 不稳定 | 无法完成正式运行 | 固定服务版本、重试/超时、失败保留、预留离线回放 |
-| 专家人力不足 | 金标规模不足 | 分层抽样、争议样本优先、保留双人盲评关键子集 |
-| 版权与隐私 | 无法开源全文或泄露材料 | 只发布元数据、哈希与构建脚本；禁止敏感材料 |
-| 范围蔓延 | 核心评估器无法按期完成 | T1/T2/T3 门槛；M3 未达标时停止图谱与 RL |
-
-### 降级触发
-
-| 触发条件 | 动作 |
-|---|---|
-| W3 证据锚不达标 | 语料缩到 100–150 篇，优先保证物理定位 |
-| W6 CEC 关键槽位不达标 | 关键字段人工补齐，自动抽取降为候选 |
-| W8 κ < 0.60 | 停止 T2/T3，重写锚点与标注指南后复评 |
-| 攻击检出率 < 85% | 定位 L1/L2 漏检，不通过降低难度掩盖 |
-| Hy3 端点无法冻结 | 正式实验延期；只报告框架联调，不混入主结果 |
-| 专家不足 | 保留双人关键子集，其余单人 + 争议抽检 |
-
----
-
-## 12. 交付物与仓库结构
-
-### 12.1 交付物
-
-| 类别 | 内容 |
-|---|---|
-| 应用 | S0–S4 源码、Hy3 适配器、证据审阅界面、拒答与审核流程 |
-| 数据 | Corpus manifest、MedicalQuestionSet、EvaluatorChallengeSet、变形 manifest |
-| 评估 | D1–D10、SEER、Hard Gate、L1 规则、Judge Prompt、人工标注指南 |
-| 结果 | 逐题输出、分项分数、95% CI、成本、失败标签、典型 Case |
-| 复现 | 配置、依赖锁、快照哈希、运行命令、失败日志、发布清单 |
-| 展示 | README、中文详细方案、≤ 2 分钟 Demo/GIF |
-
-### 12.2 建议目录
-
-~~~text
-hy-agent/
-├── README.md
-├── assets/
-│   └── opencompass-evaluation-platform.png
-├── app/
-│   ├── direct/
-│   ├── vector_rag/
-│   ├── hybrid_rag/
-│   ├── verified_agent/
-│   └── adapters/
-│       └── mito_agent/
-├── corpus/
-│   ├── ingestion/
-│   ├── evidence_span/
-│   ├── indexes/
-│   └── manifests/
-├── evidence/
-│   ├── schema/
-│   ├── extraction/
-│   ├── normalization/
-│   └── retrieval/
-├── evaluation/
-│   ├── datasets/
-│   ├── rubric/
-│   ├── rules/
-│   ├── judge/
-│   ├── mutations/
-│   ├── human/
-│   └── summarizers/
-├── results/
-│   ├── episodes/
-│   ├── scores/
-│   ├── validation/
-│   └── cases/
-├── docs/
-│   ├── ANNOTATION_GUIDE_ZH.md
-│   └── RELEASE_CHECKLIST.md
-├── configs/
-└── tests/
-~~~
-
-### 12.3 最小复现入口
-
-~~~bash
-python -m evaluation.verify_env --manifest configs/pilot_v1.json
-python -m evaluation.run --app verified_agent --dataset medical_question_set/sealed
-python -m evaluation.validate --challenge-set evaluator_challenge_set --evaluators ev0,ev1,ev2,ev3,ev4
-~~~
-
-命令是目标接口约定，只有对应模块和测试落地后才写入 README 的“可运行命令”区。
-
----
-
-## 13. 两分钟 Demo 脚本
-
-~~~text
-0:00–0:15  真实科研问题：展示通用回答中的实验条件混淆
-0:15–0:30  打开已部署 Mito-Agent，展示条件解析与证据矩阵
-0:30–0:45  在现有评测平台提交同一问题并展示完整阶段进度
-0:45–1:10  点击一条主张，跳到原文页码/图号/证据片段
-           展示支持、反驳、证据不足三分区
-1:10–1:30  展示逐主张核验、一次补检和正确拒答
-1:30–1:45  注入伪造 DOI 或物种偷换，展示 L1/Hard Gate 捕获
-1:45–1:55  展示六类底座画像与医学场景指标分开报告
-1:55–2:00  hy-agent 仓库、结果链接和复现入口
-~~~
-
-Demo 的视觉中心应是“点击回原文”和“评估器识别流畅错误”，而不是堆叠模型或算法名称。
-
----
-
-## 14. 启动清单
-
-### W1 必须确认
-
-- [ ] Mito-Agent 的机器调用入口、鉴权方式、请求/响应 Schema 与 Trace 导出；
-- [ ] 登录账号、密码和 API Key 已迁入私密凭据管理，公开仓库与文档中无明文；
-- [ ] OpenCompass 平台可通过 Adapter 运行一条 Mito-Agent Episode，并保留失败日志；
-- [ ] Hy3 可用端点、模型 ID、服务版本、预算和比赛使用规则；
-- [ ] 两名领域研究者及可投入标注时数；
-- [ ] MinerU/OvisOCR2 的版本、健康检查与样例证据；
-- [ ] 语料来源、全文许可、检索式与公开策略；
-- [ ] 现有 3000 篇候选文献的真实清单、去重和撤稿状态；
-- [ ] Pilot 的实际截止日期与团队规模；
-- [ ] 公开仓库中不包含 API Key、受限全文或未公开实验材料。
-
-### 主结论发布前
-
-- [ ] 评估器先于系统比较完成有效性验证；
-- [ ] MedicalQuestionSet 与 Challenge Set 完全分离；
-- [ ] 密封测试未进入 Prompt、调参、图融合或奖励；
-- [ ] 所有正式结果绑定 Episode 和 Artifact Manifest；
-- [ ] 负结果、超时、空输出、拒答均保留；
-- [ ] 引用列表通过自动校验和人工抽检；
-- [ ] 方案中“已完成”均有仓库文件或运行证据链接；
-- [ ] 研究用途、临床边界和图像能力边界在 README 首屏可见。
-
----
-
-## 附录 A：策略取舍记录
-
-| 内容 | 结论 | 进入正文的位置 |
-|---|---|---|
-| 评估优先、先验证尺子 | 直接采纳 | 1、3、7 |
-| CEC 与物理证据锚 | 直接采纳 | 3、4、5 |
-| 规则 + Judge + Hard Gate + 专家 | 直接采纳 | 5、6 |
-| 两个样本集分离 | 直接采纳 | 6 |
-| 对抗、等价和局部干预 | 直接采纳 | 5、7 |
-| OpenCompass 风格执行 | 修改后采纳 | 8 |
-| 九维 Rubric | 修改为十维，补任务正确性与核心覆盖 | 6 |
-| A–F 多组件消融 | 修改为 S0–S6 单因素递增 | 7 |
-| 医学证据超图 | 降级为条件化证据模型，过门槛再图化 | 5 |
-| 图文混合检索 | 首期只做图题、图注、表格和 OCR | 2、5 |
-| KGE、RotatE、GRPO | 延后到 T3 | 5 |
-| 顶刊白名单语料 | 舍弃 | 5、11 |
-| 通用 Benchmark 合成医学总分 | 舍弃 | 8 |
-| “一定优于基线” | 舍弃，改成可证伪假设 | 9 |
-
----
-
-## 附录 B：术语表
-
-| 规范术语 | 定义 |
-|---|---|
-| MitoEvidence | 可追溯快速证据综述 Agent |
-| MitoEvidence-Eval | 证据中心评估方法，也是主要研究产出 |
-| CEC | Claim–Evidence–Condition，主张、原文证据与成立条件 |
-| EvidenceSpan | 可定位到章节、页码、图表号和 bbox 的原文片段 |
-| EvidenceReviewEpisode | 可冻结、可回放的一次完整运行与评估单元 |
-| AcceptableEnvelope | 必答内容、允许结论、替代证据、必保留条件和禁止外推 |
-| SEER | Severe Evidence Error Rate，严重证据错误率 |
-| Hard Gate | 不能由其他分数抵消的严重错误否决规则 |
-| ABSTAIN | 证据不足时拒绝作确定性回答 |
-| HUMAN_REVIEW | 低置信、冲突或门禁问题转人工 |
-| MedicalQuestionSet | 用于比较系统版本的真实科研问题集 |
-| EvaluatorChallengeSet | 用于验证评估器的变形挑战集 |
-| mutation manifest | 记录变形对象、前后值和预期影响的清单 |
-| T1 / T2 / T3 | 必做 / 门槛增强 / 研究展望 |
-
----
-
-## 附录 C：参考依据
-
-以下资料用于支撑设计方向，不代表其外部结果可以直接迁移到本项目：
-
-1. [Tencent Hy3 官方仓库](https://github.com/Tencent-Hunyuan/Hy3)
-2. [OpenCompass 官方文档](https://doc.opencompass.org.cn/)
-3. [PRISMA 2020](https://www.bmj.com/content/372/bmj.n71)
-4. [OpenScholar：科学文献检索与带引文综合](https://www.nature.com/articles/s41586-025-10072-4)
-5. [TrialMind：临床证据综合流程与人机协同](https://www.nature.com/articles/s41746-025-01840-7)
-6. [ALCE：带引文文本生成评估](https://aclanthology.org/2023.emnlp-main.398/)
-7. [RAGChecker：检索与生成的细粒度失败归因](https://proceedings.neurips.cc/paper_files/paper/2024/hash/27245589131d17368cccdfa990cbf16e-Abstract-Datasets_and_Benchmarks_Track.html)
-8. [Biolink Model](https://pmc.ncbi.nlm.nih.gov/articles/PMC9372416/)
-9. [KARL：知识密集 Agent 的强化学习](https://aclanthology.org/2026.acl-long.2196/)
-10. [ToolOmni：工具检索与执行的多目标 GRPO](https://aclanthology.org/2026.acl-long.1736/)
-11. [AgentGL：基于强化学习的 Agentic Graph Learning](https://aclanthology.org/2026.acl-long.1161/)
-12. [ACL 2026 Program Chairs 报告](https://aclanthology.org/2026.acl-long.0.pdf)
-
----
-
-<div align="center">
-
-### 让每个医学主张，都能回到论文原文和实验条件。
-
-**Evidence first · Evaluation before optimization · Negative results included**
-
-</div>
+> [!NOTE]
+> 六天版本只承诺完成最小可演示闭环；真正图像语义、多模型扩展、KGE、GRPO 和大规模专家验证放入后续迭代。
 

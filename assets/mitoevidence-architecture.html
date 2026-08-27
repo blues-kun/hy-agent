@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MitoEvidence Architecture</title>
+  <style>
+    :root {
+      --bg: #06101f;
+      --panel: rgba(14, 29, 52, .88);
+      --panel-strong: rgba(17, 37, 65, .96);
+      --line: rgba(160, 191, 232, .16);
+      --text: #eef7ff;
+      --muted: #91a9c4;
+      --cyan: #64d8ff;
+      --blue: #6ea8ff;
+      --mint: #5ee6be;
+      --violet: #a990ff;
+      --amber: #ffc778;
+      --rose: #ff8ca1;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-width: 1200px;
+      min-height: 900px;
+      margin: 0;
+      color: var(--text);
+      background: #030914;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .canvas {
+      position: relative;
+      width: 1552px;
+      height: 952px;
+      overflow: hidden;
+      border: 1px solid rgba(150, 192, 235, .18);
+      border-radius: 32px;
+      background:
+        radial-gradient(circle at 8% 12%, rgba(90, 220, 255, .12), transparent 30%),
+        radial-gradient(circle at 80% 8%, rgba(160, 129, 255, .13), transparent 28%),
+        radial-gradient(circle at 72% 92%, rgba(72, 220, 175, .09), transparent 34%),
+        linear-gradient(145deg, #071323 0%, #07101e 48%, #091628 100%);
+      box-shadow: 0 32px 90px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255,255,255,.04);
+      isolation: isolate;
+    }
+
+    .canvas::before {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      content: "";
+      opacity: .35;
+      background-image: radial-gradient(rgba(157, 191, 225, .22) .8px, transparent .8px);
+      background-size: 24px 24px;
+      mask-image: linear-gradient(to bottom, black, transparent 88%);
+    }
+
+    .topbar {
+      height: 142px;
+      padding: 34px 42px 26px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(151, 188, 228, .13);
+      background: linear-gradient(180deg, rgba(12, 26, 46, .72), rgba(7, 16, 29, .22));
+    }
+
+    .eyebrow {
+      margin-bottom: 8px;
+      color: var(--mint);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .19em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 37px;
+      line-height: 1.12;
+      letter-spacing: -.035em;
+    }
+
+    .subtitle {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 15px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 34px;
+      padding: 0 13px;
+      border: 1px solid rgba(142, 184, 225, .17);
+      border-radius: 999px;
+      color: #c6d7e9;
+      background: rgba(14, 31, 54, .68);
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 14px currentColor;
+    }
+
+    .layout {
+      position: relative;
+      display: grid;
+      grid-template-columns: 252px 702px 492px;
+      gap: 22px;
+      height: 740px;
+      padding: 26px 30px 0;
+    }
+
+    .plane {
+      position: relative;
+      min-width: 0;
+      height: 704px;
+      padding: 20px;
+      border: 1px solid rgba(150, 191, 233, .16);
+      border-radius: 24px;
+      background: linear-gradient(160deg, rgba(17, 35, 61, .9), rgba(9, 22, 40, .82));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 18px 40px rgba(0,0,0,.18);
+    }
+
+    .plane::before {
+      position: absolute;
+      top: 0;
+      left: 22px;
+      right: 22px;
+      height: 1px;
+      content: "";
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: .85;
+    }
+
+    .plane-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .plane-title {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .plane-no {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid color-mix(in srgb, var(--accent) 48%, transparent);
+      border-radius: 10px;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .03em;
+    }
+
+    .plane h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -.01em;
+    }
+
+    .plane-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .user-plane { --accent: var(--cyan); }
+    .runtime-plane { --accent: var(--mint); }
+    .eval-plane { --accent: var(--violet); }
+
+    .question-card {
+      padding: 18px;
+      border: 1px solid rgba(101, 215, 255, .22);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(29, 68, 91, .62), rgba(14, 35, 57, .68));
+    }
+
+    .mini-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+      color: var(--cyan);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .question-card h3,
+    .banner h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .question-card p,
+    .banner p {
+      margin: 0;
+      color: #a9bdd1;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .down-flow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 55px;
+      color: var(--cyan);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .down-flow::before {
+      width: 1px;
+      height: 35px;
+      content: "";
+      background: linear-gradient(var(--cyan), rgba(100,216,255,.12));
+    }
+
+    .down-flow::after {
+      content: "▼";
+      transform: translateY(-3px) scale(.7);
+    }
+
+    .review-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .review-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 60px;
+      padding: 11px 12px;
+      border: 1px solid rgba(145, 179, 213, .13);
+      border-radius: 15px;
+      background: rgba(8, 22, 39, .55);
+    }
+
+    .review-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 31px;
+      width: 31px;
+      height: 31px;
+      border-radius: 10px;
+      color: var(--cyan);
+      background: rgba(100, 216, 255, .1);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .review-item strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 12px;
+    }
+
+    .review-item span {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .banner {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 76px;
+      padding: 14px 16px;
+      overflow: hidden;
+      border: 1px solid rgba(92, 230, 189, .23);
+      border-radius: 18px;
+      background: linear-gradient(120deg, rgba(26, 80, 71, .7), rgba(14, 43, 55, .72));
+    }
+
+    .banner::after {
+      position: absolute;
+      top: -45px;
+      right: -20px;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      content: "";
+      background: radial-gradient(circle, rgba(94, 230, 190, .22), transparent 66%);
+    }
+
+    .status {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid rgba(119, 244, 207, .25);
+      border-radius: 999px;
+      color: #baf8e5;
+      background: rgba(28, 78, 65, .64);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .pipeline {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .pipeline::before {
+      position: absolute;
+      top: 51px;
+      left: 11%;
+      right: 11%;
+      height: 1px;
+      z-index: 0;
+      content: "";
+      background: linear-gradient(90deg, var(--cyan), var(--mint));
+      box-shadow: 0 0 12px rgba(94, 230, 190, .25);
+    }
+
+    .step {
+      position: relative;
+      z-index: 1;
+      min-height: 106px;
+      padding: 13px 12px;
+      border: 1px solid rgba(143, 187, 220, .15);
+      border-radius: 16px;
+      background: linear-gradient(165deg, rgba(23, 47, 75, .96), rgba(10, 28, 47, .98));
+      text-align: left;
+    }
+
+    .step-no {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 11px;
+      border-radius: 8px;
+      color: #051522;
+      background: linear-gradient(135deg, var(--cyan), var(--mint));
+      font-size: 10px;
+      font-weight: 950;
+      box-shadow: 0 0 18px rgba(94, 230, 190, .2);
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.45;
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.2fr;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .decision-card {
+      padding: 10px 11px;
+      border: 1px solid rgba(144, 181, 217, .14);
+      border-radius: 13px;
+      color: #dceafb;
+      background: rgba(8, 23, 40, .66);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-align: center;
+    }
+
+    .decision-card.answer { border-color: rgba(94, 230, 190, .34); color: #93f1d3; }
+    .decision-card.abstain { border-color: rgba(255, 199, 120, .32); color: #ffd59b; }
+    .decision-card.review { border-color: rgba(169, 144, 255, .34); color: #c9b9ff; }
+
+    .evidence-shelf {
+      position: relative;
+      padding: 15px;
+      border: 1px solid rgba(111, 169, 255, .2);
+      border-radius: 18px;
+      background: linear-gradient(140deg, rgba(15, 38, 68, .88), rgba(9, 25, 45, .92));
+    }
+
+    .shelf-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 11px;
+    }
+
+    .shelf-head strong {
+      color: #cfe2fa;
+      font-size: 11px;
+      letter-spacing: .06em;
+    }
+
+    .readonly {
+      color: var(--blue);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+    }
+
+    .evidence-item {
+      min-height: 74px;
+      padding: 11px;
+      border: 1px solid rgba(114, 166, 236, .14);
+      border-radius: 12px;
+      background: rgba(14, 32, 55, .7);
+    }
+
+    .evidence-item b {
+      display: block;
+      margin-bottom: 6px;
+      color: #d7e7fb;
+      font-size: 10px;
+    }
+
+    .evidence-item span {
+      color: #7f9ab7;
+      font-size: 8px;
+      line-height: 1.45;
+    }
+
+    .platform-banner {
+      min-height: 82px;
+      padding: 14px 15px;
+      border: 1px solid rgba(169, 144, 255, .25);
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(68, 52, 120, .6), rgba(23, 39, 69, .75));
+    }
+
+    .platform-banner .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .platform-banner h3 {
+      margin: 0 0 7px;
+      font-size: 14px;
+    }
+
+    .platform-banner p {
+      margin: 0;
+      color: #a8b8ce;
+      font-size: 10px;
+    }
+
+    .platform-status {
+      padding: 6px 9px;
+      border: 1px solid rgba(190, 174, 255, .25);
+      border-radius: 999px;
+      color: #d4caff;
+      background: rgba(82, 61, 135, .45);
+      font-size: 9px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .episode {
+      position: relative;
+      margin: 13px 0;
+      padding: 12px 14px;
+      border: 1px solid rgba(104, 216, 255, .18);
+      border-radius: 14px;
+      background: rgba(10, 30, 50, .7);
+    }
+
+    .episode strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #beeaff;
+      font-size: 11px;
+    }
+
+    .episode span {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .layers {
+      display: grid;
+      gap: 8px;
+    }
+
+    .layer {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 58px;
+      padding: 9px 11px;
+      border: 1px solid rgba(153, 180, 218, .13);
+      border-radius: 14px;
+      background: rgba(10, 25, 45, .7);
+    }
+
+    .layer-code {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      color: #e2d9ff;
+      background: rgba(169, 144, 255, .13);
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .layer strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 11px;
+    }
+
+    .layer span {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .layer-tag {
+      color: #a990ff !important;
+      font-size: 8px !important;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 13px;
+    }
+
+    .metric {
+      padding: 12px 7px;
+      border: 1px solid rgba(151, 189, 228, .13);
+      border-radius: 13px;
+      background: rgba(8, 22, 39, .62);
+      text-align: center;
+    }
+
+    .metric b {
+      display: block;
+      margin-bottom: 5px;
+      color: #f1f7ff;
+      font-size: 13px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .bridge {
+      position: absolute;
+      z-index: 4;
+      width: 32px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--bridge), rgba(255,255,255,.08));
+      box-shadow: 0 0 12px color-mix(in srgb, var(--bridge) 42%, transparent);
+    }
+
+    .bridge::after {
+      position: absolute;
+      top: -4px;
+      right: -1px;
+      width: 7px;
+      height: 7px;
+      content: "";
+      border-top: 1px solid var(--bridge);
+      border-right: 1px solid var(--bridge);
+      transform: rotate(45deg);
+    }
+
+    .bridge span {
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      color: #8199b4;
+      font-size: 8px;
+      font-weight: 800;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+
+    .bridge-a { --bridge: var(--cyan); left: 279px; top: 251px; }
+    .bridge-b { --bridge: var(--violet); left: 1003px; top: 317px; }
+
+    .footer {
+      position: absolute;
+      left: 42px;
+      right: 42px;
+      bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #718aa6;
+      font-size: 10px;
+    }
+
+    .footer strong { color: #abc1d8; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <section class="canvas" aria-label="MitoEvidence 四平面总体架构图">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Hy-Agent / MitoEvidence</div>
+        <h1>证据优先的医学 Agent 与评测架构</h1>
+        <div class="subtitle">从科研问题、冻结证据到可回放评测结果 · Evaluation before optimization</div>
+      </div>
+      <div class="header-meta" aria-label="架构图图例">
+        <span class="chip" style="color: var(--mint)"><i class="dot"></i>在线 Agent</span>
+        <span class="chip" style="color: var(--blue)"><i class="dot"></i>冻结证据</span>
+        <span class="chip" style="color: var(--violet)"><i class="dot"></i>离线评估</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="plane user-plane">
+        <div class="plane-head">
+          <div class="plane-title"><span class="plane-no">01</span><h2>用户与审阅</h2></div>
+          <span class="plane-label">Research</span>
+        </div>
+
+        <article class="question-card">
+          <div class="mini-label"><i class="dot"></i>Research Input</div>
+          <h3>科研问题 + 条件约束</h3>
+          <p>物种、细胞、扰动、剂量、时长、方法、结局与时间范围。</p>
+        </article>
+
+        <div class="down-flow">结构化输出</div>
+
+        <div class="review-list">
+          <article class="review-item"><i class="review-icon">矩</i><div><strong>证据矩阵</strong><span>支持 / 反驳 / 不确定</span></div></article>
+          <article class="review-item"><i class="review-icon">述</i><div><strong>逐主张综述</strong><span>每个结论绑定引用</span></div></article>
+          <article class="review-item"><i class="review-icon">锚</i><div><strong>点击回到原文</strong><span>页码 · 图号 · EvidenceSpan</span></div></article>
+          <article class="review-item"><i class="review-icon">审</i><div><strong>专家复核</strong><span>冲突与低置信样本</span></div></article>
+        </div>
+      </section>
+
+      <section class="plane runtime-plane">
+        <div class="plane-head">
+          <div class="plane-title"><span class="plane-no">02</span><h2>在线 Agent 运行平面</h2></div>
+          <span class="plane-label">Runtime</span>
+        </div>
+
+        <article class="banner">
+          <div><h3>Mito-Agent Web / API</h3><p>真实医学实验与文献综述 Agent · Hy3 Runtime</p></div>
+          <span class="status"><i class="dot"></i>已落地 · 待接入</span>
+        </article>
+
+        <div class="pipeline">
+          <article class="step"><i class="step-no">01</i><strong>问题理解</strong><span>查询拆解<br/>条件抽取</span></article>
+          <article class="step"><i class="step-no">02</i><strong>混合检索</strong><span>BM25 + Dense<br/>Rerank + Filter</span></article>
+          <article class="step"><i class="step-no">03</i><strong>证据综合</strong><span>多文献聚合<br/>冲突分区</span></article>
+          <article class="step"><i class="step-no">04</i><strong>逐主张核验</strong><span>引用 · 条件<br/>一次补检</span></article>
+        </div>
+
+        <div class="decision">
+          <div class="decision-card answer">ANSWER</div>
+          <div class="decision-card abstain">ABSTAIN</div>
+          <div class="decision-card review">HUMAN_REVIEW</div>
+        </div>
+
+        <section class="evidence-shelf">
+          <div class="shelf-head"><strong><span class="plane-no" style="display:inline-grid;width:25px;height:25px;margin-right:8px">03</span>只读证据与快照平面</strong><span class="readonly">READ ONLY · SHA-256</span></div>
+          <div class="evidence-grid">
+            <article class="evidence-item"><b>Corpus Snapshot</b><span>语料 revision<br/>许可与撤稿状态</span></article>
+            <article class="evidence-item"><b>EvidenceSpan</b><span>章节 · 页码<br/>图表 · bbox</span></article>
+            <article class="evidence-item"><b>CEC Store</b><span>Claim · Evidence<br/>Condition</span></article>
+            <article class="evidence-item"><b>Artifact Manifest</b><span>Model · Prompt<br/>Tool · Index</span></article>
+          </div>
+        </section>
+      </section>
+
+      <section class="plane eval-plane">
+        <div class="plane-head">
+          <div class="plane-title"><span class="plane-no">04</span><h2>离线评测与控制</h2></div>
+          <span class="plane-label">Evaluation</span>
+        </div>
+
+        <article class="platform-banner">
+          <div class="row"><h3>OpenCompass + Eval-Dominator</h3><span class="platform-status">平台已构建</span></div>
+          <p>Adapter · Task · Attempt · Cache · Report</p>
+        </article>
+
+        <article class="episode"><strong>冻结 EvidenceReviewEpisode</strong><span>输入、环境、轨迹、输出、证据、预算与版本一次性封存</span></article>
+
+        <div class="layers">
+          <article class="layer"><i class="layer-code">L1</i><div><strong>确定性规则</strong><span>标识符、位置、Schema、单位、哈希</span></div><span class="layer-tag">Rules</span></article>
+          <article class="layer"><i class="layer-code">L2</i><div><strong>证据约束 Judge</strong><span>主张—证据支持、条件与效应方向</span></div><span class="layer-tag">Judge</span></article>
+          <article class="layer"><i class="layer-code">L3</i><div><strong>Hard Gate</strong><span>伪造、错绑、条件偷换、危险外推</span></div><span class="layer-tag">Gate</span></article>
+          <article class="layer"><i class="layer-code">L4</i><div><strong>专家仲裁</strong><span>低置信、冲突与边界样本</span></div><span class="layer-tag">Expert</span></article>
+        </div>
+
+        <div class="metrics">
+          <article class="metric"><b>SEER</b><span>Severe Error</span></article>
+          <article class="metric"><b>D1–D10</b><span>Diagnostics</span></article>
+          <article class="metric"><b>PASS</b><span>Gate Status</span></article>
+          <article class="metric"><b>Cost</b><span>Token · Time</span></article>
+        </div>
+      </section>
+
+      <div class="bridge bridge-a"><span>结构化请求</span></div>
+      <div class="bridge bridge-b"><span>冻结 Episode</span></div>
+    </main>
+
+    <footer class="footer"><span><strong>核心规则：</strong> 密封测试不回流 Runtime · 正式结果绑定不可变身份</span><span>MitoEvidence Architecture · V1.1</span></footer>
+  </section>
+</body>
+</html>
+
