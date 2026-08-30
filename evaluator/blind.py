@@ -1,14 +1,17 @@
-"""Offline, auditable workflow for two-expert blind annotation.
+"""Archived/optional workflow for a future two-rater reliability study.
 
 This module deliberately separates three things that are easy to conflate:
 
-* ``annotation_prelabel`` contains AI suggestions and is never gold;
+* ``annotation_prelabel`` is the project-owner-designated consolidated expert gold
+  snapshot, despite its legacy directory and ``ai_*`` field names;
 * a *neutral packet* contains only an explicit source-fact allowlist;
-* locked expert files and third-expert adjudication are human records.
+* newly locked expert files would be observations from a separate A/B study.
 
-The code may copy source facts, calculate hashes, compare labels and report
-disagreements.  It never copies an AI decision into a human packet and never
-chooses an adjudication decision.
+The current gold snapshot has no independent A/B columns, so this module cannot
+recover historical inter-expert agreement.  It may still copy source facts,
+calculate hashes, compare *new* labels and report disagreements if a future
+study is explicitly run.  It never copies a gold decision into a neutral packet
+and never chooses an adjudication decision.
 """
 from __future__ import annotations
 
@@ -68,9 +71,10 @@ TERMINOLOGY_CONTEXT_ALLOWLIST = (
     "source_id",
 )
 
-# These are AI decisions, suggestions or workflow labels.  Their presence in
-# a neutral packet is always a bug.  ``annotator_code`` is intentionally not
-# forbidden because it belongs only to a separate human review file.
+# These are designated source-gold decisions, suggestions or workflow labels.
+# Their presence in a neutral packet for a new reliability study is always a
+# label-leakage bug. ``annotator_code`` is intentionally not forbidden because
+# it belongs only to a separate new review file.
 FORBIDDEN_NEUTRAL_KEYS = {
     "annotator",
     "review_status",
@@ -459,8 +463,9 @@ def build_blind_package(
                 "terminology": ["term_id", *TERMINOLOGY_CONTEXT_ALLOWLIST, "source_context_missing"],
                 "review_pool": "facts_from_eval/data/evidence_pool_manifest.json_only",
             },
-            "ai_prelabels_are_gold": False,
-            "human_adjudication_required_for_disagreements": True,
+            "source_records_designated_expert_consensus_gold": True,
+            "source_gold_labels_included_in_neutral_packet": False,
+            "new_study_adjudication_required_for_disagreements": True,
         },
         "inputs": input_meta,
         "input_snapshot_sha256": input_snapshot_hash,

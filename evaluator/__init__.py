@@ -6,10 +6,11 @@
   - rules      确定性规则层（标识符核验、结构必需项、数字与单位）；
   - judge      Hy3 语义判定与自一致性聚合；
   - assembly   九维输入与致命错误的可审计汇总；
-  - blind      双专家盲标包、锁定校验与第三人裁决入口；
+  - expert_gold 现有127条专家共识金标的哈希审计与无损读取；
+  - blind      可选新A/B可靠性研究的盲标包、锁定校验与裁决入口；
   - validation 判别力、一致性、稳定性和对抗性统计。
 
-量表本身仍是未冻结的 v0.1；代码齐备不等于已经完成专家校准或正式盲测。
+量表本身仍是未冻结的 v0.1；现有金标不含独立A/B列，不能据此计算专家间一致性。
 """
 from evaluator.rubric import EVALUATOR_VERSION, evaluate, load_rubric
 

@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Build a neutral, hash-frozen two-expert annotation package.
+"""Build an optional neutral package for a *new* two-rater study.
 
 Example:
   python scripts/build_blind_packets.py \
     --batch-id pilot-v1 --guideline-version rubric-0.2 \
     --out results/blind_packets/pilot-v1
 
-The destination must be new.  The command never overwrites an existing human
-assignment and never copies AI decisions/reasons into ``neutral_items.jsonl``.
+The existing 127 records are already designated consolidated expert gold.  This
+command is not required to make them gold and cannot recover their historical
+inter-expert agreement.  If a separate future reliability study is requested,
+the destination must be new; the command never overwrites an assignment and
+never copies source-gold decisions/reasons into ``neutral_items.jsonl``.
 """
 from __future__ import annotations
 
@@ -24,7 +27,7 @@ if str(REPO_ROOT) not in sys.path:
 def main() -> int:
     from evaluator.blind import BlindWorkflowError, build_blind_package
 
-    parser = argparse.ArgumentParser(description="生成不含 AI 判断的双专家盲标包")
+    parser = argparse.ArgumentParser(description="为可选的新可靠性研究生成不含现有金标的 A/B 包")
     parser.add_argument("--batch-id", required=True, help="不可复用的任务批次 ID")
     parser.add_argument("--guideline-version", required=True, help="专家标注指南版本")
     parser.add_argument("--out", type=Path, required=True, help="新输出目录（拒绝覆盖）")
@@ -32,7 +35,7 @@ def main() -> int:
         "--annotation-root",
         type=Path,
         default=REPO_ROOT / "annotation_prelabel",
-        help="AI 预标目录；仅按其中 README 白名单读取",
+        help="现有专家共识金标目录；仅抽取来源字段，排除金标标签",
     )
     parser.add_argument(
         "--evidence-manifest",
@@ -61,7 +64,7 @@ def main() -> int:
         "中性来源 SHA-256："
         f"{manifest['outputs']['neutral_items.jsonl']['sha256']}"
     )
-    print("A/B 文件仍为空白模板；专家独立完成并锁定后再运行校验器。")
+    print("A/B 文件是可选新研究的空白模板；它们不是当前127条金标的缺失组成部分。")
     return 0
 
 

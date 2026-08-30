@@ -25,7 +25,7 @@ def main() -> int:
 
     ap = argparse.ArgumentParser(description="MitoEvidence-Hy3：可追溯快速证据综述")
     source = ap.add_mutually_exclusive_group(required=True)
-    source.add_argument("--pilot-id", help="运行AI预标Pilot（PILOT-01…PILOT-05）")
+    source.add_argument("--pilot-id", help="运行专家金标Pilot（PILOT-01…PILOT-05）")
     source.add_argument("--question", help="自定义研究问题")
     ap.add_argument(
         "--pilot-file",
@@ -63,7 +63,7 @@ def main() -> int:
         cfg = default_judge_config()
         if not cfg.resolve_api_key():
             raise SystemExit(
-                "缺少HY3_API_KEY。请在腾讯云轮换已暴露的旧Key后，用环境变量提供新Key；"
+                "缺少HY3_API_KEY；请通过环境变量提供；"
                 "若只验工程链路可加 --offline-smoke。"
             )
         model = Hy3ReviewModel(config=cfg)

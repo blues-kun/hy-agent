@@ -1,0 +1,84 @@
+{
+  "schema_version": "mitoevidence.expert_consensus_gold.v1",
+  "designation": "expert_consensus_gold",
+  "confirmed_at": "2026-08-30",
+  "confirmation_source": "project_owner",
+  "description": "The project owner confirmed that the records in the four listed JSONL files are the available expert annotations and that no later annotation round exists.",
+  "provenance_note": "annotator, review_status and ai_* are retained legacy field names. They are not used to override this manifest-level designation.",
+  "rater_structure": {
+    "kind": "single_consolidated_expert_result",
+    "rater_count": null,
+    "rater_identities_recorded": false,
+    "independent_rater_columns_present": false,
+    "inter_expert_agreement_computable": false,
+    "reason": "Each item has one consolidated annotation only; no item contains separate expert-A and expert-B labels."
+  },
+  "datasets": [
+    {
+      "name": "pilot_questions",
+      "path": "annotation_prelabel/pilot_questions/pilot_5_questions.jsonl",
+      "sha256": "61bc1ed4605ddeb63d14f9a8842533f166f2a097ec35c5041572205277f76820",
+      "record_count": 5,
+      "id_field": "question_id",
+      "gold_fields": [
+        "answerability",
+        "required_claims",
+        "optional_claims",
+        "required_context_slots",
+        "known_conflicts",
+        "prohibited_inferences",
+        "source_reviews",
+        "evidence_papers",
+        "evidence_spans"
+      ]
+    },
+    {
+      "name": "claim_reviews",
+      "path": "annotation_prelabel/claim_review_sample/claim_review_sample.jsonl",
+      "sha256": "14f3edb2b0d2b56fd2f7de973e111190fa408962375d002e18452834c37ee7b8",
+      "record_count": 50,
+      "id_field": "review_id",
+      "gold_fields": [
+        "ai_decision",
+        "ai_confidence",
+        "ai_reasoning",
+        "defect_codes",
+        "suggested_edits",
+        "usable_for_beta_cell_evidence",
+        "needs_human_verification"
+      ]
+    },
+    {
+      "name": "terminology_rules",
+      "path": "annotation_prelabel/terminology_blacklist/terminology_blacklist.jsonl",
+      "sha256": "a3a78e2cdbf1de385f901dc8a63388731dbabbdc4b6e9561360dac58019d4802",
+      "record_count": 60,
+      "id_field": "term_id",
+      "gold_fields": [
+        "category",
+        "wrong",
+        "correct",
+        "why",
+        "example_wrong",
+        "example_correct",
+        "maps_to_dimension",
+        "detector",
+        "ai_confidence"
+      ]
+    },
+    {
+      "name": "review_pool",
+      "path": "annotation_prelabel/review_pool_assessment/review_pool_assessment.jsonl",
+      "sha256": "4fed858a7b009ae32196e00416e5a06152bf416c9efdec955b53ef9783ec0ca8",
+      "record_count": 12,
+      "id_field": "assessment_id",
+      "gold_fields": [
+        "ai_decision",
+        "pool_role",
+        "recommended_uses",
+        "caveats",
+        "required_human_checks"
+      ]
+    }
+  ]
+}

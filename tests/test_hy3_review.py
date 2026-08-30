@@ -58,6 +58,20 @@ def _tool_body(name, arguments):
     }
 
 
+def _content_body(arguments):
+    return {
+        "choices": [{"message": {"content": json.dumps(arguments)}}],
+        "usage": {"prompt_tokens": 8, "completion_tokens": 3},
+    }
+
+
+def _unstructured_body():
+    return {
+        "choices": [{"message": {"content": "I did not call the required function."}}],
+        "usage": {"prompt_tokens": 2, "completion_tokens": 2},
+    }
+
+
 def test_hy3_plan_keeps_only_caller_supplied_pmids_and_synthesis_uses_evidence_ids():
     session = _Session(
         [
@@ -129,3 +143,27 @@ def test_hy3_plan_keeps_only_caller_supplied_pmids_and_synthesis_uses_evidence_i
     assert all(call["headers"]["X-Session-ID"].startswith("mitoevidence-review") for call in session.calls)
     # 思考内容只参与修复上下文，不进入应用审计对象。
     assert "reasoning_content" not in plan_audit.model_dump()
+
+
+def test_hy3_review_falls_back_to_json_schema_after_function_call_repairs_fail():
+    valid = {
+        "queries": ["beta cell mitochondria"],
+        "source_pmids": [],
+        "rationale": "retrieve evidence",
+        "answerability_hint": "partial",
+    }
+    session = _Session([_unstructured_body(), _unstructured_body(), _unstructured_body(), _content_body(valid)])
+    model = Hy3ReviewModel(
+        api_key="dummy",
+        base_url="https://example.invalid/v1",
+        model="hy3",
+        session=session,
+        sleep_fn=lambda _: None,
+    )
+    plan, audit = model.plan(ReviewRequest(question_id="Q-fallback", question="test"))
+    assert plan.queries == ["beta cell mitochondria"]
+    assert audit.parse_source == "content_json"
+    assert len(session.calls) == 4
+    assert "tools" in session.calls[0]["json"]
+    assert "response_format" in session.calls[-1]["json"]
+    assert "tools" not in session.calls[-1]["json"]

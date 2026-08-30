@@ -104,7 +104,12 @@ class ReviewRunner:
         )
         if not passages and not is_out_of_scope:
             warnings.append("冻结语料未召回全文段落；应用必须降级为证据不足，不能凭模型记忆补写。")
-        review, synthesis_audit = self.model.synthesize(request, passages)
+        # 这里只把模型自己的检索计划判断传给综合阶段，并不读取专家金标。
+        # 它使综合阶段能遵守越界拒答约束，同时保持被测输入与金标隔离。
+        synthesis_request = request.model_copy(
+            update={"answerability_hint": effective_answerability}
+        )
+        review, synthesis_audit = self.model.synthesize(synthesis_request, passages)
         if is_out_of_scope and review.answerability.value != "out_of_scope":
             raise ValueError("显式越界问题未被模型拒答；为防止临床建议泄漏，整次运行失败并进入人工复核")
         if is_out_of_scope and review.claims:
@@ -133,7 +138,7 @@ class ReviewRunner:
         status = (
             "offline_engineering_smoke_not_model_result"
             if self.run_kind is RunKind.OFFLINE_SMOKE
-            else "hy3_engineering_run_pending_human_gold"
+            else "hy3_run_pending_expert_gold_scoring"
         )
         try:
             manifest_label = str(self.corpus.manifest_path.relative_to(self.corpus.repo_root))
@@ -270,7 +275,7 @@ class ReviewRunner:
         lines = [
             f"# {artifact.request.question_id} · 可追溯快速证据综述",
             "",
-            f"> 状态：`{artifact.formal_status}`。未经双人专家金标和人工复核，不得作为正式科学结论。",
+            f"> 状态：`{artifact.formal_status}`。未经已确认专家金标比对和结果审核，不得作为正式科学结论。",
             "",
             "## 回答",
             "",

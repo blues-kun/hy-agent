@@ -1,7 +1,7 @@
-# MitoEvidence-Hy3：可追溯医学证据综述与九维评估
+# MitoEvidence-Hy3：工程实现与复现指南
 
 > 犀牛鸟实战任务 · 开放式场景：AI 应用与评判标准设计
-> 当前工程基线：**应用 MVP v0.3 + 未冻结量表 v0.1（2026-08-30）**
+> 当前工程基线：**应用 MVP v0.3.1 + 专家共识金标 v1 + 未冻结量表 v0.1（2026-08-30）**
 
 ## 这是什么
 
@@ -14,7 +14,7 @@
 
 设计立场有三条：**图关系不是真值，一切主张必须回到原文；Judge 不是科学真值，必须与专家标注校准；严重证据错误不能被文笔和篇幅抵消——所以有总分上限。**
 
-完整方案见 [`docs/proposal.md`](docs/proposal.md)，API 与方法学核验记录见 [`docs/verification_report.md`](docs/verification_report.md)。
+完整方案见 [`proposal.md`](proposal.md)，API 与方法学核验记录见 [`verification_report.md`](verification_report.md)。
 
 ## 当前实现状态
 
@@ -33,17 +33,18 @@
 | 五题批量入口：真实 Hy3 或醒目标记的离线工程回归 | `scripts/run_pilot_suite.py` |
 | 独立原子主张候选拆分：不接受被测系统自报 Claim，歧义升级人工 | `evaluator/claim_splitter.py` |
 | 九维自动汇总：D1—D9、四类致命错误证据和发布门控 | `evaluator/assembly.py` |
-| 双专家盲标：中性白名单包、A/B 锁定校验、第三人裁决入口 | `evaluator/blind.py` |
+| 专家共识金标审计：127条原始快照、逐文件哈希、字段designation与完整性边界 | `evaluator/expert_gold.py` |
 | 有效性统计：判别力、一致性、稳定性与对抗鲁棒性 | `evaluator/validation.py` |
+| Pilot A/B/C/D：无检索、稀疏TF-IDF、冻结证据图、Hy3 Judge门控 | `app/ablation.py` |
 | D8 术语初筛：本地版本化三态词表与外部/人工复核队列 | `evaluator/rules/terminology_check.py` |
 | 量表文档（含 15 条待澄清项） | `eval/rubric.md` |
 | 引用核验 CLI（可真实联网） | `scripts/verify_citations.py` |
 | Judge CLI（逐主张判定 + 升级队列 + 成本汇总） | `scripts/run_judge.py` |
 | 金标语料校验 CLI | `scripts/validate_gold.py` |
 | 金标证据池构建 CLI（12 篇综述引文合并去重 + OA 全文下载） | `scripts/build_gold_pool.py` |
-| 400 项离线测试 | `tests/` |
+| 424 项离线测试 | `tests/` |
 
-**仍未完成且不得提前宣传为结果：** 已暴露旧 Key 的控制台吊销/轮换、真实 Hy3 五题正式运行、双专家独立金标与第三人裁决、20 份试标校准与量表冻结、40 题核心集/20 题拒答集/对抗集、A/B/C/D 消融及正式结果表、完整 MeSH/GO 对齐和 2 分钟 Demo。离线五题回归只证明工程链路可运行，不是模型性能或科学结论。详见 [`docs/completion_status_20260830.md`](docs/completion_status_20260830.md)。
+**当前边界：** 项目负责人确认现有127条记录即本项目唯一专家共识金标；原始文件仍保留历史字段，designation manifest负责解释，不改写来源快照。真实Hy3五题已运行，但样本量仅5；专家间一致性不可计算，只能报告自动系统与单份专家参考的一致度。完整MeSH/GO对齐、扩展题集、量表冻结、正式多重复消融和2分钟Demo仍待完成。详见 [`docs/completion_status_20260830.md`](completion_status_20260830.md)。
 
 ## 快速开始
 
@@ -53,7 +54,7 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock.txt
 
-# 2. 全量离线回归（400 项；不需要网络和 Key）
+# 2. 全量离线回归（424 项；不需要网络和 Key）
 .venv/bin/python -m pytest
 
 # 3. 首次克隆需按现有 manifest 获取并逐个核验 OA XML（联网；全文不进入 Git）
@@ -64,10 +65,9 @@ python3 -m venv .venv
 .venv/bin/python scripts/run_pilot_suite.py --offline-smoke \
   --suite-id engineering-pilot5-offline
 
-# 5. 生成不含 AI 判断的 127 条双专家盲标包
-.venv/bin/python scripts/build_blind_packets.py \
-  --batch-id pilot-human-v1 --guideline-version rubric-v0.1-unfrozen \
-  --out results/blind_packets/pilot-human-v1
+# 5. 审计项目负责人确认的127条专家共识金标
+.venv/bin/python scripts/audit_expert_gold.py \
+  --out results/expert_gold/audit.json
 
 # 6. 本地原子主张候选拆分与术语三态初筛
 .venv/bin/python scripts/split_claim_candidates.py \
@@ -77,12 +77,16 @@ python3 -m venv .venv
   --input eval/data/terminology/items.sample.jsonl \
   --output results/terminology.json --review-queue results/terminology_unknown.jsonl
 
-# 7. 真实 Hy3 运行前，先在控制台吊销旧 Key、创建新 Key；只放环境变量
+# 7. 真实 Hy3 只通过环境变量读取凭据
 cp .env.example .env && $EDITOR .env
 set -a && source .env && set +a
 .venv/bin/python scripts/run_pilot_suite.py --suite-id pilot5-hy3-v1
 
-# 8. 引用核验与逐主张 Hy3 Judge
+# 8. 真实 Pilot A/B/C/D（Pilot默认Judge k=1；正式自一致性使用k=7）
+.venv/bin/python scripts/run_pilot_ablation.py \
+  --suite-id pilot-abcd-hy3-v1 --replicates 1 --judge-k 1
+
+# 9. 引用核验与逐主张 Hy3 Judge
 .venv/bin/python scripts/verify_citations.py \
   --doi 10.1038/s41746-025-02005-2 \
   --doi 10.2427/12267 \
@@ -91,7 +95,7 @@ set -a && source .env && set +a
 .venv/bin/python scripts/run_judge.py --input eval/data/claims.sample.jsonl \
   --out results/judge/aggregates.jsonl --escalations results/judge/escalations.jsonl
 
-# 9. 校验人工金标并分析正式有效性数据
+# 10. 校验金标并分析有效性数据
 .venv/bin/python scripts/validate_gold.py eval/data/questions.sample.jsonl
 .venv/bin/python scripts/analyze_validation.py --print-input-schema \
   --output results/validation_input_schema.json
@@ -101,7 +105,8 @@ set -a && source .env && set +a
 
 `verify_citations.py` 默认忽略系统代理直连；确需走代理时加 `--trust-env`。正式九维汇总使用
 `scripts/assemble_evaluation.py`，其输入必须来自已落盘的规则结果、Judge 结果与人工记录；
-不会把缺失维度默认为正确。A/B 专家尚未交卷时，`release_ready` 必须保持 `false`。
+不会把缺失维度默认为正确。当前只有一份专家共识参考；缺少输出级专家维度分时，
+`release_ready` 必须保持 `false`，且不得把自动—专家一致度写成专家间可靠性。
 
 ### 用计分引擎打一份分
 
@@ -146,7 +151,8 @@ hy-agent/
 │   ├── gold.py                        金标语料工具链：装载/校验/分集泄漏检查
 │   ├── claim_splitter.py              独立、未冻结的原子主张候选拆分
 │   ├── assembly.py                    D1—D9与致命错误审计汇总
-│   ├── blind.py                       A/B盲标、锁定、一致性与裁决入口
+│   ├── expert_gold.py                 127条专家共识金标的哈希与完整性审计
+│   ├── blind.py                       历史可选的A/B盲标工具（当前正式流程不使用）
 │   ├── validation.py                  判别力/一致性/稳定性/对抗统计
 │   ├── judge/                         Hy3语义Judge、自一致性与传输层
 │   └── rules/
@@ -161,11 +167,11 @@ hy-agent/
 │       ├── pool_builder.py            引文合并去重与 manifest
 │       ├── frozen_fetch.py            只获取 manifest 已冻结且哈希一致的 OA XML
 │       └── xml_anchor.py              安全JATS解析与证据重定位
-├── annotation_prelabel/               127条AI预标与空白人工工作流；明确不是金标
+├── annotation_prelabel/               127条专家共识金标原始快照与designation manifest
 ├── eval/
 │   ├── rubric.md                      量表文档（含待澄清项）
 │   └── data/
-│       ├── questions.sample.jsonl     合成示例金标记录（正式语料按方案 9.2 双人标注）
+│       ├── questions.sample.jsonl     合成Schema示例；正式参考来自expert_gold manifest
 │       ├── claims.sample.jsonl        Judge 输入格式示例（1 条合成主张 + 证据）
 │       ├── claim_split.sample.json     独立主张候选拆分示例
 │       ├── terminology/               项目级示例词表；不是完整MeSH/GO
@@ -232,7 +238,7 @@ hy-agent/
 | 格式规范性 | D9/D7 | 程序校验 |
 | （题目没点名，我们加的） | D3、D4、D5 | 领域差异化，D4 为全网空白 |
 
-完整对照表与维度血统（ALCE / GRADE / PRISMA 2020 / PDSQI-9）见 [`docs/dimension_mapping.md`](docs/dimension_mapping.md)。
+完整对照表与维度血统（ALCE / GRADE / PRISMA 2020 / PDSQI-9）见 [`dimension_mapping.md`](dimension_mapping.md)。
 
 ## 工程约定
 
@@ -248,7 +254,7 @@ hy-agent/
 
 **批量核验参数。** Crossref 单请求 50 个 DOI（实测最优）；NCBI esummary 单批 200 个 UID 且用 POST，`tool` 与 `email` 必填——后者还需另发邮件到 `eutilities@ncbi.nlm.nih.gov` 登记。
 
-**Judge 按实测事实实现，不按公开文档想当然。** TokenHub 模型级 RPM 60 → 客户端 ≤1 请求/秒节流；默认开启思考，所有请求显式传 `reasoning_effort`（Judge 用 `high`），思考 token 计入 `max_tokens`；交错式思考下 `tool_choice` 仅保证 `auto`；思考+工具调用的多轮消息逐轮回填 `reasoning_content`；`logprobs` 被静默忽略 → 置信走自一致性采样（temp=0 标签一致率 100% 无信息量，故采样 `temperature=0.7`）；Prompt Cache 走 `prompt_cache_key` + `X-Session-ID`，提示词用「冻结稳定前缀 + 逐主张内容置尾」的缓存友好布局。以上实测依据见 `configs/judge_v0_1.yaml` 各项的 source 注释与 `docs/proposal.md` 5.3/5.4/8.4 节。
+**Judge 按实测事实实现，不按公开文档想当然。** TokenHub 模型级 RPM 60 → 客户端 ≤1 请求/秒节流；默认开启思考，所有请求显式传 `reasoning_effort`（Judge 用 `high`），思考 token 计入 `max_tokens`；交错式思考下 `tool_choice` 仅保证 `auto`；思考+工具调用的多轮消息逐轮回填 `reasoning_content`；`logprobs` 被静默忽略 → 置信走自一致性采样（temp=0 标签一致率 100% 无信息量，故采样 `temperature=0.7`）；Prompt Cache 走 `prompt_cache_key` + `X-Session-ID`，提示词用「冻结稳定前缀 + 逐主张内容置尾」的缓存友好布局。以上实测依据见 `../configs/judge_v0_1.yaml` 各项的 source 注释与 `proposal.md` 5.3/5.4/8.4 节。
 
 **测试全部离线。** `tests/` 用注入的 mock session 与 mock `sleep_fn`，不发真实请求、不产生真实等待。联网验证由 `scripts/verify_citations.py` 与 `scripts/run_judge.py` 单独执行。
 
@@ -263,4 +269,4 @@ hy-agent/
 
 ## 许可与引用
 
-方案与量表引用的外部规范：[ALCE](https://aclanthology.org/2023.emnlp-main.398/)、[PRISMA 2020](https://www.prisma-statement.org/prisma-2020)、[Cochrane Handbook 6.5](https://www.cochrane.org/authors/handbooks-and-manuals/handbook/current)、[RAGChecker](https://arxiv.org/abs/2408.08067)、[Croxford 等 npj Digital Medicine 2025](https://doi.org/10.1038/s41746-025-02005-2)、[MedRAGChecker](https://arxiv.org/abs/2601.06519)、[Bujang & Baharum 2017](https://doi.org/10.2427/12267)。完整清单见 `docs/proposal.md` 第 18 节。
+方案与量表引用的外部规范：[ALCE](https://aclanthology.org/2023.emnlp-main.398/)、[PRISMA 2020](https://www.prisma-statement.org/prisma-2020)、[Cochrane Handbook 6.5](https://www.cochrane.org/authors/handbooks-and-manuals/handbook/current)、[RAGChecker](https://arxiv.org/abs/2408.08067)、[Croxford 等 npj Digital Medicine 2025](https://doi.org/10.1038/s41746-025-02005-2)、[MedRAGChecker](https://arxiv.org/abs/2601.06519)、[Bujang & Baharum 2017](https://doi.org/10.2427/12267)。完整清单见 `proposal.md` 第 18 节。

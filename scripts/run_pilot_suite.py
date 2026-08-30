@@ -75,8 +75,7 @@ def main() -> int:
         cfg = default_judge_config()
         if not cfg.resolve_api_key():
             raise SystemExit(
-                "缺少 HY3_API_KEY。旧 Key 已暴露，必须先在腾讯控制台轮换；"
-                "仅验证工程可加 --offline-smoke。"
+                "缺少 HY3_API_KEY；请通过环境变量注入。仅验证工程可加 --offline-smoke。"
             )
         model = Hy3ReviewModel(config=cfg)
         run_kind = RunKind.HY3
@@ -123,7 +122,7 @@ def main() -> int:
         "formal_status": (
             "offline_engineering_smoke_not_model_result"
             if run_kind is RunKind.OFFLINE_SMOKE
-            else "hy3_engineering_suite_pending_human_gold"
+            else "hy3_suite_pending_expert_gold_scoring"
         ),
         # 审计包不应泄露参赛机器上的绝对目录。仓库内输入记录相对路径；
         # 仓库外自定义输入只记录文件名，并始终以 SHA-256 固定实际内容。

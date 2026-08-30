@@ -106,7 +106,7 @@ def test_offline_smoke_materializes_traceable_run_without_claiming_model_result(
     assert [item.status for item in artifact.anchor_checks] == ["found"]
     out = runner.write_run(artifact, out_root=tmp_path / "runs", run_id="Q1-smoke")
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["application_version"] == "mitoevidence-hy3-v0.3.0"
+    assert manifest["application_version"] == "mitoevidence-hy3-v0.3.1"
     assert len(manifest["evidence_manifest"]["sha256"]) == 64
     assert not manifest["evidence_manifest"]["path"].startswith("/")
     assert set(manifest["files"]) == {

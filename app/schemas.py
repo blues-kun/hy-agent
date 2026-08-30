@@ -1,7 +1,7 @@
 """应用层结构化契约。
 
-所有模型输出都先经过本地 Pydantic 校验。这里刻意不复用“金标”命名：应用运行
-产物是待评回答，只有双人盲标和裁决后的 ``QuestionGold`` 才能称为金标准。
+所有模型输出都先经过本地 Pydantic 校验。应用运行产物始终是待评回答；项目所有者
+确认的专家记录由独立金标加载器管理，不能由被测应用自行写入或改写。
 """
 from __future__ import annotations
 
@@ -153,7 +153,7 @@ class AnchorCheck(StrictModel):
 
 
 class ReviewRunArtifact(StrictModel):
-    application_version: str = "mitoevidence-hy3-v0.3.0"
+    application_version: str = "mitoevidence-hy3-v0.3.1"
     evidence_manifest_path: str
     evidence_manifest_sha256: str
     request: ReviewRequest
@@ -164,4 +164,4 @@ class ReviewRunArtifact(StrictModel):
     anchor_checks: list[AnchorCheck] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     run_kind: RunKind
-    formal_status: str = "engineering_run_pending_human_gold"
+    formal_status: str = "engineering_run_pending_expert_gold_scoring"
