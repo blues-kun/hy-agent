@@ -1,0 +1,14 @@
+# MitoEvidence-Hy3 评估器直接依赖（Python 3.11 实测通过）
+#
+# 安装（国内网络用清华镜像，并注意绕过失效代理）：
+#   unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+#   python3 -m venv .venv
+#   .venv/bin/python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+#
+# 本文件只列直接依赖，便于受控升级；提交版复现请优先安装
+# `requirements.lock.txt` 中已经冻结的传递依赖。
+
+pydantic==2.13.4      # 数据契约与本地 Schema 校验（方案 5.3：模型侧结构约束不作为安全边界）
+pyyaml==6.0.3         # 读取 configs/rubric_v0_1.yaml（量表数值唯一真值源）
+requests==2.34.2      # Crossref / NCBI E-utilities HTTP 客户端
+pytest==9.1.1         # 离线测试，无网络依赖

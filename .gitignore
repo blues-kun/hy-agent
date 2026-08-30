@@ -1,0 +1,39 @@
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 密钥与本地配置：仓库只提交 .env.example
+.env
+.env.local
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# 测试与工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 运行产物：评测结果与原始请求响应落盘（体量大且可重生成）
+results/
+eval/results/
+!eval/data/.gitkeep
+
+# 受版权限制的全文：仓库只发布标识符与必要短证据（方案 15 节）
+data/fulltext/
+eval/data/corpus_raw/
+*.pdf
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store

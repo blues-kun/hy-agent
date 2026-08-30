@@ -1,0 +1,3 @@
+{"item_id":"TERM-SAMPLE-001","claimed_term":"β cell","context":"β cell mitochondrial morphology","is_key":true,"requested_authority":"local"}
+{"item_id":"TERM-SAMPLE-002","claimed_term":"Ca¥","context":"legacy XML extraction","is_key":true,"requested_authority":"human"}
+{"item_id":"TERM-SAMPLE-003","claimed_term":"mitochondrial crista remodeling","context":"candidate mechanism term","is_key":false,"requested_authority":"GO"}

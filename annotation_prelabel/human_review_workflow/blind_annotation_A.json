@@ -1,0 +1,88 @@
+{
+  "template_version": "1.0.0",
+  "workflow": "independent_blind_annotation",
+  "annotator_slot": "EXPERT_A",
+  "annotator_code": null,
+  "batch_id": null,
+  "guideline_version": null,
+  "source_snapshot_sha256": null,
+  "started_at_utc": null,
+  "completed_at_utc": null,
+  "review_status": "human_blind_in_progress",
+  "blindness_attestation": {
+    "ai_prelabels_not_viewed": null,
+    "expert_b_labels_not_viewed": null,
+    "independent_work_confirmed": null
+  },
+  "assignment_scope": {
+    "pilot_questions": ["PILOT-01", "PILOT-02", "PILOT-03", "PILOT-04", "PILOT-05"],
+    "claim_review_ids": "CLM-01..CLM-50",
+    "terminology_ids": "TERM-001..TERM-060",
+    "review_pool_ids": "REVPOOL-001..REVPOOL-012"
+  },
+  "allowed_values": {
+    "pilot_answerability": ["answerable", "partial", "insufficient", "out_of_scope", "uncertain"],
+    "claim_decision": ["accept", "accept_with_edits", "reject", "uncertain"],
+    "terminology_decision": ["approve_rule", "revise_rule", "reject_rule", "uncertain"],
+    "review_pool_decision": ["include_seed", "include_context_only", "exclude", "uncertain"],
+    "confidence": ["low", "medium", "high"]
+  },
+  "record_templates": {
+    "pilot_question": {
+      "item_type": "pilot_question",
+      "item_id": null,
+      "answerability": null,
+      "atomic_claims": [],
+      "required_context_slots": [],
+      "known_conflicts": [],
+      "prohibited_inferences": [],
+      "evidence_locators": [],
+      "decision": null,
+      "confidence": null,
+      "rationale": null,
+      "field_corrections": {}
+    },
+    "claim": {
+      "item_type": "claim",
+      "item_id": null,
+      "decision": null,
+      "evidence_role": null,
+      "recorded_conditions": {},
+      "usable_for_beta_cell_evidence": null,
+      "evidence_locators": [],
+      "confidence": null,
+      "rationale": null,
+      "field_corrections": {}
+    },
+    "terminology": {
+      "item_type": "terminology",
+      "item_id": null,
+      "decision": null,
+      "allowed_expression": null,
+      "scope_and_exceptions": [],
+      "evidence_locators": [],
+      "confidence": null,
+      "rationale": null,
+      "field_corrections": {}
+    },
+    "review_pool": {
+      "item_type": "review_pool",
+      "item_id": null,
+      "decision": null,
+      "topic_scope": [],
+      "exclusion_scope": [],
+      "permitted_uses": [],
+      "fulltext_and_anchor_status": null,
+      "must_trace_to_primary_study": null,
+      "confidence": null,
+      "rationale": null,
+      "field_corrections": {}
+    }
+  },
+  "records": [],
+  "lock": {
+    "locked_at_utc": null,
+    "signature_or_audit_id": null,
+    "amendment_of": null
+  }
+}
