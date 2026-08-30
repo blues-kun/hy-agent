@@ -45,7 +45,7 @@
 | Judge CLI（逐主张判定 + 升级队列 + 成本汇总） | `scripts/run_judge.py` |
 | 金标语料校验 CLI | `scripts/validate_gold.py` |
 | 金标证据池构建 CLI（12 篇综述引文合并去重 + OA 全文下载） | `scripts/build_gold_pool.py` |
-| 561 项离线测试 | `tests/` |
+| 564 项离线测试 | `tests/` |
 
 **当前边界：** 项目负责人确认现有127条记录即本项目唯一专家共识金标；原始文件仍保留历史字段，designation manifest负责解释，不改写来源快照。真实Hy3五题、180次术语判别和50次Claim准入已经运行；专家间一致性不可计算，只能报告自动系统与单份专家参考的一致度。旧结果的逐cell证明范围、失败指标和待完成项见 [`experiment_results_20260831.md`](experiment_results_20260831.md)。
 
@@ -57,7 +57,7 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock.txt
 
-# 2. 全量离线回归（561 项；不需要网络和 Key）
+# 2. 全量离线回归（564 项；不需要网络和 Key）
 .venv/bin/python -m pytest
 
 # 3. 首次克隆需按现有 manifest 获取并逐个核验 OA XML（联网；全文不进入 Git）
