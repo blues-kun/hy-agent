@@ -1,0 +1,50 @@
+{
+  "template_version": "1.0.0",
+  "workflow": "third_expert_adjudication",
+  "adjudicator_code": null,
+  "batch_id": null,
+  "guideline_version": null,
+  "source_snapshot_sha256": null,
+  "expert_a_locked_file_sha256": null,
+  "expert_b_locked_file_sha256": null,
+  "started_at_utc": null,
+  "completed_at_utc": null,
+  "review_status": "adjudication_in_progress",
+  "allowed_final_decisions": [
+    "accept",
+    "accept_with_edits",
+    "reject",
+    "include_seed",
+    "include_context_only",
+    "exclude",
+    "approve_rule",
+    "revise_rule",
+    "reject_rule",
+    "answerable",
+    "partial",
+    "insufficient",
+    "out_of_scope",
+    "unresolved"
+  ],
+  "record_template": {
+    "item_type": null,
+    "item_id": null,
+    "expert_a_decision": null,
+    "expert_b_decision": null,
+    "disagreement_fields": [],
+    "source_evidence_reviewed": [],
+    "final_decision": null,
+    "final_field_values": {},
+    "rationale": null,
+    "unresolved_reason": null,
+    "ai_prelabel_consulted": false,
+    "impact_of_ai_prelabel": null,
+    "adjudicated_at_utc": null
+  },
+  "records": [],
+  "lock": {
+    "locked_at_utc": null,
+    "signature_or_audit_id": null,
+    "amendment_of": null
+  }
+}

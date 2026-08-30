@@ -1,0 +1,70 @@
+# L2 语义 Judge 运行配置 v0.1（未冻结：提示词、Schema 与阈值按方案 8.4 在校准后冻结）。
+#
+# 与 configs/rubric_v0_1.yaml 的分工：rubric 配置是「判定口径」的唯一真值源；
+# 本文件只放 Judge 的运行参数（模型、限流、采样、通道），不定义任何评分判据。
+# source 注释注明每个数值的依据：方案章节，或 scripts/hy3_smoke_test.py 的实测结论。
+
+version: "0.1"
+frozen: false
+
+model:
+  # 端点与密钥一律从环境变量读取，不落盘（HY3_API_KEY/HY3_BASE_URL/HY3_MODEL）。
+  base_url_env: HY3_BASE_URL
+  api_key_env: HY3_API_KEY
+  model_env: HY3_MODEL
+  default_base_url: "https://tokenhub.tencentmaas.com/v1"   # 实测端点；env 优先
+  default_model: "hy3"
+
+transport:
+  # source: 模型级上限 RPM 60（实测）→ 客户端内置 ≤1 请求/秒节流。
+  max_rps: 1.0
+  # 429 指数退避 + 传输失败/5xx 重试的有界次数。
+  max_retries: 4
+  timeout_s: 180
+  # source: 本机 http_proxy/https_proxy 指向已失效代理 127.0.0.1:18081 → 默认直连。
+  trust_env: false
+
+request:
+  # source: 实测默认开启思考，所有请求显式传 reasoning_effort；Judge 用 high。
+  reasoning_effort: high
+  # source: 思考 token 计入 max_tokens，预算须给足（实测结论）。
+  max_tokens: 4096
+  # 单次判定（非自一致性）的默认温度；自一致性采样温度见 self_consistency.temperature。
+  temperature: 0.7
+  seed: null
+
+structured_output:
+  # 主通道：Function Calling（emit_judge_verdict 工具）。
+  # source: 官方文档「交错式思考模式下 tool_choice 仅支持 auto」+ 实测 auto+high 可用；
+  # 判定结果经工具通道输出并本地 Schema 校验（方案 8.4）。
+  channel: function_calling
+  tool_choice: auto
+  # 备选通道：response_format json_schema+strict。
+  # source: 实测约束解码强制生效（负向探针 step8）但完全无文档 → 只留开关不作默认。
+  fallback_channel: json_schema
+  # 无论哪条通道，返回都过 schemas.JudgeVerdict 本地校验（方案 5.3：模型侧结构
+  # 约束不视为安全边界）；校验失败的有界修复重试次数（不含首次请求）。
+  max_parse_retries: 2
+
+prompt_cache:
+  # source: 实测 Prompt Cache 经请求体 prompt_cache_key + Header X-Session-ID 启用，
+  # 命中量见 usage.prompt_tokens_details（cached_token/cached_tokens 两个键名都查）。
+  enabled: true
+  cache_key: "mitoevidence-judge-v0_1"
+  session_header: X-Session-ID
+  session_id: "mitoevidence-judge-v0_1"
+
+self_consistency:
+  # source: 实测 temp=0 时判定标签一致率 100%（N=20），采样无信息量 → 必须 temp>0；
+  # logprobs 被静默忽略（实测 step9）→ 置信只能用多次采样一致率。
+  k: 7
+  temperature: 0.7
+  # 逐样本 seed = base_seed + 样本序号（记录随机参数，方案 8.4）；null 表示不传 seed。
+  base_seed: null
+  # agreement 票数 < 5（即 5/7）→ escalate_to_human=true 进升级队列。
+  # 分母用 k（采样失败计入分母，视为不一致——保守方向）；该口径为实现选择，
+  # 见 eval/rubric.md「待澄清 N」。
+  min_agreement_votes: 5
+  # source: 方案 8.4「低置信、方向冲突和致命错误必须人工复核」→ 多数票为 refuted
+  # （方向冲突）时无论一致率高低都升级人工。
+  escalate_on_refuted: true

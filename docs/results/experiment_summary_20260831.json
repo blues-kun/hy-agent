@@ -1,0 +1,65 @@
+{
+  "schema_version": "mitoevidence.public-experiment-summary.v1",
+  "as_of": "2026-08-31",
+  "reference": {
+    "designation": "single_project_owner_confirmed_expert_consensus",
+    "records": 127,
+    "manifest_sha256": "cf67dd5856bd6d2a6eead1e169970b0b17482bb694339489afa1210776bbfd3f",
+    "inter_expert_reliability": "unavailable_no_independent_per_rater_labels"
+  },
+  "experiments": {
+    "application_pilot": {
+      "questions": 5,
+      "completed": 5,
+      "answerability_raw_agreement": 0.6,
+      "answerability_cohen_kappa": 0.375,
+      "interpretation": "system_vs_single_expert_consensus_reference"
+    },
+    "terminology_pair_pilot_legacy_v1": {
+      "items": 60,
+      "repeats": 3,
+      "planned_calls": 180,
+      "succeeded_calls": 180,
+      "correct_calls": 173,
+      "wrong_attack_choices": 0,
+      "abstentions": 7,
+      "all_call_accuracy": 0.9611111111111111,
+      "decisive_accuracy": 1.0,
+      "item_majority_accuracy": 0.9666666666666667,
+      "repeat_pairwise_agreement": 0.9666666666666667,
+      "length_only_baseline_accuracy": 0.9,
+      "analysis_sha256": "7e79b54f51b39e2617f9fba91d1576784206b4ae02d7443effac44c13e6eab49",
+      "provenance_assurance": "legacy_v1_nonformal_limited_cell_provenance"
+    },
+    "claim_admission_pilot_legacy_v1": {
+      "items": 50,
+      "repeats": 1,
+      "planned_calls": 50,
+      "succeeded_calls": 50,
+      "four_class_accuracy": 0.32,
+      "four_class_cohen_kappa": 0.035734543391945546,
+      "four_class_macro_f1": 0.21717171717171718,
+      "four_class_majority_baseline_accuracy": 0.5,
+      "reject_recall": 0.07142857142857142,
+      "binary_keep_candidate_recall": 0.9090909090909091,
+      "binary_keep_candidate_specificity": 0.17647058823529413,
+      "analysis_sha256": "ca160a1d9ce6ffc211c5a49006fa9c20160afe520405509ab44733659734eb68",
+      "provenance_assurance": "legacy_v1_nonformal_limited_cell_provenance"
+    },
+    "pilot_ablation_v2": {
+      "cells": 20,
+      "succeeded_cells": 20,
+      "artifact_errors": 0,
+      "structural_audit_ok": true,
+      "production_ready": false,
+      "interpretation": "legacy_v2_structural_only_nonformal"
+    }
+  },
+  "boundaries": [
+    "No inter-expert agreement statistic is available.",
+    "Terminology pairs do not test full-text claim-evidence support.",
+    "Claim-admission performance is insufficient for an automatic exclusion gate.",
+    "A/B/C/D v2 is not a formal production-ready ablation result.",
+    "Raw results, copyrighted full text and credentials are intentionally not committed."
+  ]
+}

@@ -2,37 +2,99 @@
 
 # Hy-Agent · MitoEvidence
 
-### 面向 β 细胞线粒体研究的可追溯证据综述与评测方案
+### 面向 β 细胞线粒体研究的可追溯证据综述与九维评测
 
 ![Model](https://img.shields.io/badge/MODEL-Hy3-111111?style=flat-square)
-![Platform](https://img.shields.io/badge/PLATFORM-BUILT-555555?style=flat-square)
+![Version](https://img.shields.io/badge/MVP-v0.3.1-555555?style=flat-square)
+![Tests](https://img.shields.io/badge/TESTS-561%20PASSING-111111?style=flat-square)
+![Gold](https://img.shields.io/badge/EXPERT%20GOLD-127-555555?style=flat-square)
 [![Mito Agent](https://img.shields.io/badge/MITO--AGENT-DEPLOYED-111111?style=flat-square)](https://agent.blueskun.com:8444/)
 
 </div>
 
 <p align="center">
   <a href="#1-项目简介">项目简介</a> ·
-  <a href="#2-总体架构">总体架构</a> ·
-  <a href="#4-评测方法">评测方法</a> ·
-  <a href="#5-平台与接入">平台与接入</a> ·
-  <a href="#7-十二天计划">十二天计划</a>
+  <a href="#2-当前状态">当前状态</a> ·
+  <a href="#3-总体架构">总体架构</a> ·
+  <a href="#4-评测与实验">评测与实验</a> ·
+  <a href="#5-快速复现">快速复现</a> ·
+  <a href="#6-文档入口">文档入口</a>
 </p>
 
 ---
 
 ## 1. 项目简介
 
-MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent**，以及独立的 **MitoEvidence-Eval** 评测方法。项目聚焦 β 细胞线粒体研究，把科研问题转化为带原文锚点、实验条件和审核状态的证据综述。
+MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent**，以及独立的
+**MitoEvidence-Eval**。项目聚焦胰岛、β 细胞、线粒体与显微成像研究，把科研问题转化为
+带原文锚点、实验条件、引用身份和审核状态的可追溯证据综述。
 
-> **医学 Agent 回答得像专家，不等于证据可信。结论必须能回到原文，实验条件必须可核验，严重错误必须能被独立评测。**
+> **回答得像专家，不等于证据可信。每个关键结论都应能回到原文；物种、细胞、实验条件与
+> 效应方向必须可核验；严重证据错误不能被语言流畅度抵消。**
 
-| 组成 | 状态 | 本期工作 |
+工程闭环包括：
+
+`问题结构化 → 冻结语料检索 → 证据约束生成 → 原子主张/证据绑定 → XML 锚点重定位 → 九维评估 → 审计包`
+
+[Mito-Agent 在线实例](https://agent.blueskun.com:8444/)已经部署。仓库提供可复现的 Hy3
+调用、评测、实验和审计代码；在线实例与本仓库实验结果分别报告，不把部署状态当作有效性结论。
+
+## 2. 当前状态
+
+截至 2026-08-31，当前可核查基线如下：
+
+| 项目 | 已完成状态 | 证据入口 |
 |---|---|---|
-| Mito-Agent | ● 已部署 · 待接入 | 机器接口、Trace、适配器 |
-| 离线评测平台 | ● 已构建 | 模型、数据、任务与报告 |
-| MitoEvidence-Eval | ◐ 实现中 | CEC、数据集、四层评测器 |
+| 应用闭环 | Hy3 MVP `v0.3.1`；真实五题 Pilot 完成 `5/5` | `app/`、`scripts/run_pilot_suite.py` |
+| 专家参考 | 127 条项目方确认的**单一专家共识金标**；原始快照、字段 designation 与逐文件哈希可审计 | `annotation_prelabel/expert_gold_manifest.json`、`evaluator/expert_gold.py` |
+| 评测框架 | D1–D9、NA 重归一、四类致命错误上限、PASS/REVIEW/REJECT | `evaluator/rubric.py`、`evaluator/assembly.py` |
+| Hy3 Judge | Function Calling、JSON Schema 备选、本地校验、自一致性与升级队列 | `evaluator/judge/` |
+| 真实有效性 Pilot | 术语正误对 180/180 次、Claim 准入 50/50 次真实 Hy3 调用完成 | `app/terminology_pair_pilot.py`、`app/claim_admission_pilot.py` |
+| A/B/C/D 消融 | v3 固定生成/Judge身份、seed、缓存命名空间、顶层快照、跨组绑定与敏感信息审计 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
+| 实验协议 | 系统—专家参考一致度、判别力、稳定性、对抗性与消融审计入口已实现 | `evaluator/experiment_protocol.py` |
+| 工程验证 | Python 3.11 下 561 项离线测试通过 | `tests/` |
 
-## 2. 总体架构
+127 条金标来自四类任务，不能当作 127 个同构评分样本混算：
+
+| 金标组成 | 数量 | 可用范围与边界 |
+|---|---:|---|
+| Pilot 问题 | 5 | 含 30 条 required claims；`evidence_papers/evidence_spans` 为空 |
+| Claim 审核 | 50 | accept 8、accept_with_edits 25、reject 14、uncertain 3 |
+| 术语正误对 | 60 | wrong/correct 成对完整；没有另设 approve/reject 标签 |
+| 综述池评估 | 12 | 共 2,043 条参考文献；7 篇有本地 XML 与冻结哈希 |
+
+原始 JSONL 中的 `ai_*`、`annotator`、`review_status` 等历史字段保持原样；仓库通过独立
+manifest 记录项目方确认的 `expert_consensus_gold` designation，不静默改写来源快照。
+
+### 五题真实 Hy3 Pilot
+
+固定应用版本 `v0.3.1` 在同一套件中完成 5/5：
+
+| Pilot | 召回段落 | 输出主张 | 状态 |
+|---|---:|---:|---|
+| PILOT-01 | 12 | 7 | 完成 |
+| PILOT-02 | 12 | 4 | 完成 |
+| PILOT-03 | 12 | 8 | 完成 |
+| PILOT-04 | 12 | 3 | 完成 |
+| PILOT-05 | 0 | 0 | 正确越界拒答 |
+
+系统与专家金标 `answerability` 的原始一致率为 **0.60**，Cohen's **κ=0.375**，`n=5`。
+这是 **Hy3 系统对单份专家参考的一致度**，只用于描述小样本 Pilot；它**不是专家间一致性**。
+当前没有专家 A/B 的独立逐项标签，因此专家间 κ、Gwet's AC1/AC2 和 ICC 均不可计算，必须报告
+`unavailable`，不能复制同一份金标来构造第二位专家。
+
+### 真实术语与 Claim Pilot
+
+| 任务 | 规模 | 结果 | 使用边界 |
+|---|---:|---|---|
+| 术语/条件错误成对判别 | 60 对 × 3 次 | 173/180 正确，7 次 abstain，0 次选择攻击表述；多数票 58/60；重复一致率 96.67% | 正确句通常更长，长度基线已达 90%；不是全文证据核验 |
+| Claim 准入四分类 | 50 × 1 次 | accuracy=0.32，κ=0.0357，macro-F1=0.2172；多数类基线=0.50 | reject 召回仅 7.14%，不能作为自动排除门禁 |
+
+两组都是实际 Hy3 结果，也都保留不理想指标。它们产生于旧 v1 artifact contract，分析器明确标为
+`legacy_v1_nonformal_limited_cell_provenance`，不会静默升级为新版完整逐调用证明。详细指标、
+偏差分析和 SHA-256 见 [`docs/experiment_results_20260831.md`](docs/experiment_results_20260831.md)。
+
+## 3. 总体架构
 
 <p align="center">
   <a href="assets/mitoevidence-architecture.html">
@@ -42,131 +104,115 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 
 <p align="center"><sub>五步主流程与可信证据、离线评测两层支撑能力</sub></p>
 
-设计遵循四条规则：
-
-1. **证据优先**：最小可信单元是 `Claim + EvidenceSpan + Condition`，而不是孤立答案。
-2. **评估优先**：先验证评估器的判别力和一致性，再比较 Agent 版本。
-3. **显式决策**：拒答和人工复核是正式结果，不视为系统失败。
-4. **测试隔离**：开发集诊断可以回流；密封测试的答案、证据和反馈禁止回流。
-
-## 3. 重点技术
-
-| 模块 | 核心作用 | 输出 |
+| 层级 | 核心能力 | 审计输出 |
 |---|---|---|
-| 科研问题结构化 | 抽取物种、细胞、扰动、剂量、时长与结局 | 条件化问题 |
-| EvidenceSpan | 定位章节、页码、图表与原文片段 | 原文证据锚 |
-| CEC | 绑定主张、证据和实验条件 | 可审核证据单元 |
-| 混合检索 | BM25 + Dense + Rerank + 条件过滤 | 候选证据与排序 |
-| 逐主张核验 | 核对引用、条件、效应方向和冲突 | 通过、拒答或转专家 |
-| EvidenceReviewEpisode | 冻结输入、轨迹、输出、证据和版本 | 可回放记录 |
-| 四层评测器 | L1 规则 → L2 证据 Judge → L3 Hard Gate → L4 专家 | 分数、门禁和失败原因 |
-
-本期聚焦上述主链路；证据图、KGE、GRPO 与图像语义理解留作后续。
-
-## 4. 评测方法
-
-### 4.1 三条评测轨道
-
-| 轨道 | 评测对象 | 输出 |
-|---|---|---|
-| 基础能力回归 | Hy3 或其他底座模型 | 六类能力画像，不合成医学总分 |
-| 医学 Agent 评测 | Mito-Agent 的不同系统版本 | SEER、D1–D10、Gate、成本 |
-| 评估器元评估 | MitoEvidence-Eval | 判别力、人工一致性、稳定性和攻击检出 |
-
-### 4.2 六类基础能力
-
-| 能力 | 代表性任务 |
-|---|---|
-| 通用知识 | 跨领域知识理解与事实判断 |
-| 数学与理工科 | 数学推导、物理、化学与工程问题 |
-| 多语言 | 医学英语、中文医学表达与跨语言一致性 |
-| 代码 | 通用代码，以及线粒体图像分割原理判断与底核方法设计 |
-| 推理 | 跨论文证据链、冲突分析、机制与因果层级 |
-| 上下文 | 长论文、多文献证据池与中间位置证据召回 |
-
-公共 Benchmark 只用于底座回归，不能替代医学场景评测。
-
-### 4.3 医学 Agent 评测
-
-两套样本严格隔离：
-
-| 数据集 | 用途 | 初始规模 |
-|---|---|---:|
-| MedicalQuestionSet | 比较 Agent 系统版本 | Pilot 100 题：40 开发 + 60 密封 |
-| EvaluatorChallengeSet | 验证评估器是否识别受控错误 | 不少于 60 个变形家族 |
-
-系统按单因素递增比较：
-
-`S0 直接生成 → S1 Dense RAG → S2 混合检索 → S3 条件过滤 → S4 逐主张核验 + 一次补检 + 拒答`
-
-本期主比较为 `S4 vs S2`。评估器必须先完成元评估并冻结，再运行密封测试。
-
-**主指标**
-
-~~~text
-SEER = 含严重证据错误的关键输出主张数 / 可评估关键输出主张数
-~~~
-
-`D1–D10` 用于诊断任务覆盖、来源追溯、证据支持、引用完整、条件保真、冲突覆盖、推断与拒答、术语、复现和科研可用性。十维总分不能抵消 Hard Gate。
-
-**Hard Gate**
-
-以下情况直接进入 `FAIL` 或人工复核：
-
-- 伪造、错绑或不可定位的关键引用；
-- 核心结论无证据，或被所引原文直接反驳；
-- 物种、细胞模型、实验条件或效应方向偷换；
-- 把相关性写成因果，或从基础实验无支持地外推临床建议；
-- 证据不足却继续强答。
-
-最终状态为 `PASS / REVIEW / FAIL`，阈值在开发集校准后冻结。
-
-## 5. 平台与接入
-
-现有离线平台已提供模型、数据、任务、产物、日志和报告工作流。本期在现有平台中新增 Mito-Agent 接入与医学证据评测能力。
+| 应用层 | Hy3 规划、冻结语料 BM25、证据约束综合、越界拒答 | 运行清单、响应、Token 与延迟 |
+| 证据层 | Claim、EvidenceSpan、实验条件、XML 文本锚点 | 来源标识、段落位置与内容哈希 |
+| 规则层 | 引用身份、结构、数字/单位、术语三态检查 | 可复算的确定性结果 |
+| Judge 层 | 逐主张支持关系、条件与方向判断、自一致性 | 结构化判定、置信度与升级队列 |
+| 门禁层 | 九维计分、NA、致命错误上限、人工复核状态 | 维度分、失败原因与发布决策 |
 
 <p align="center">
   <img src="assets/evaluation-platform.png" alt="离线评测平台任务详情页" width="100%" />
 </p>
 
-<p align="center"><sub>已构建离线评测平台的任务详情与题级分析界面</sub></p>
+<p align="center"><sub>离线评测平台的任务详情与题级分析界面</sub></p>
 
-接入主链路：
+## 4. 评测与实验
 
-`QuestionSet → MitoAgentAdapter → Mito-Agent → EvidenceReviewEpisode → L1–L4 → Eval-Dominator Report`
+### 九维评测
 
-| 接入项 | 内容 |
-|---|---|
-| Agent 适配 | 稳定机器接口、脱敏鉴权、超时与失败保留 |
-| Trace 统一 | 检索、重排、工具调用、补检、Token、延迟和产物引用 |
-| 身份冻结 | 模型、Prompt、语料、索引、工具、Runner、评估器和 seed |
-| 报告扩展 | SEER、D1–D10、Gate、成本、题级错误和专家队列 |
+| 维度 | 内容 | 权重 |
+|---|---|---:|
+| D1 | 引用真实性 | 10 |
+| D2 | 主张—证据一致性 | 20 |
+| D3 | 关键证据覆盖与引用完整性 | 15 |
+| D4 | 实验条件与效应方向准确性 | 12 |
+| D5 | 机制综合、冲突处理与因果校准 | 15 |
+| D6 | 不确定性、拒答校准与安全边界 | 10 |
+| D7 | 可追溯性与流程可复现性 | 8 |
+| D8 | 专业术语、数字与单位准确性 | 5 |
+| D9 | 用户可理解性与格式规范 | 5 |
 
-[Mito-Agent 在线实例](https://agent.blueskun.com:8444/)已部署，当前等待机器接口与 Trace 接入。
+核心结论使用伪造引用、关键主张大面积无可定位证据、物种或效应方向偷换，以及输出患者个体化
+诊疗决策，会触发独立于加权总分的致命错误上限。工具超时、Schema 失败和缺失输出不会从分母删除。
 
-## 6. 预期效果
+### A/B/C/D Pilot 消融
 
-| 目标 | 验证方式 |
-|---|---|
-| 降低严重证据错误 | 比较 S4 与 S2 的 SEER 和 Hard Gate |
-| 提高证据支持与条件保真 | 检查关键主张、引用和实验条件的一致性 |
-| 提高正确拒答与风险分流 | 单独报告 ANSWER、ABSTAIN、HUMAN_REVIEW |
-| 验证评估方法有效 | 检查判别力、专家一致性、重复稳定性和攻击检出 |
-| 保证结果可复现 | 每项结果可回到 Episode、配置、快照和版本身份 |
-| 提高科研核对效率 | 实测定位一条支持或反驳证据所需时间 |
-
-## 7. 十二天计划
-
-依托已构建的评测平台和已部署的 Mito-Agent，本阶段采用 12 天冲刺，优先完成可调用、可回放、可评测的最小闭环。
-
-| 时间 | 目标 | 交付 |
+| 组别 | 配置 | 目的 |
 |---|---|---|
-| 第 1–2 天 | 冻结范围并接入 Agent | Scope、接口契约、单题调用和脱敏日志 |
-| 第 3–4 天 | 统一 Trace，完成六类能力 smoke | Episode v1、基础能力快照 |
-| 第 5–6 天 | 建立证据底座并运行系统基线 | EvidenceSpan、CEC、S0–S3 结果 |
-| 第 7–8 天 | 实现评估器并构建挑战集 | D1–D10、SEER、L1–L3、ChallengeSet |
-| 第 9–10 天 | 元评估冻结，完成 S4 | 校准记录、四层评测器、完整闭环 |
-| 第 11–12 天 | 密封小测、结果整理和发布 | 失败归因、报告、复现入口和 README |
+| A | 无检索 | 测量底座直接生成能力 |
+| B | 冻结语料稀疏 TF-IDF | 测量基础检索增益；不伪称 dense embedding |
+| C | 冻结证据图重排 | 测量结构化证据选择增益 |
+| D | 同一 C 草稿 + Hy3 Judge 门控 | 测量逐主张审核、降级与拒答增益 |
+
+runner 会记录每个 cell 的成功或失败，并要求 D 绑定精确的 C artifact hash。旧 v2 真实套件的
+20/20 cell 均结构完整且无审计错误，但因缺少完整逐调用身份，只能标为 nonformal。
+新 v3 只有在官方 Hy3 端点、非空 seed、输入/证据快照、成功/失败敏感信息复扫和全部跨组绑定
+同时通过时才可产生 `production_ready=true`；多重复真实结果与置信区间尚未生成。
+
+判别力、对抗性和稳定性同样按已落地协议运行。当前五题 Pilot 没有原文 EvidenceSpan，也没有
+输出级专家九维总分，因此不能补造完整 D2/D3 金标指标，亦不能报告自动总分对专家总分的
+Spearman、MAE 或 ICC。
+
+## 5. 快速复现
+
+```bash
+# 1. 建立隔离环境并安装锁定依赖
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.lock.txt
+
+# 2. 运行全部离线测试（不调用网络或 Hy3）
+.venv/bin/python -m pytest -q
+
+# 3. 审计 127 条专家共识金标及其哈希
+.venv/bin/python scripts/audit_expert_gold.py \
+  --out results/expert_gold/audit.json
+
+# 4. 获取 manifest 冻结的 OA XML；全文不会进入 Git
+.venv/bin/python scripts/fetch_frozen_corpus.py \
+  --output results/frozen_corpus_fetch.json
+
+# 5. 运行真实 Hy3 五题套件；凭据只从环境变量读取
+.venv/bin/python scripts/run_pilot_suite.py \
+  --suite-id pilot5-hy3-v1
+
+# 6. 运行真实术语与 Claim Pilot
+.venv/bin/python scripts/run_terminology_pair_pilot.py \
+  --suite-id terminology-pair-hy3-v2 --limit 60 --repeats 3 --base-seed 20260831
+.venv/bin/python scripts/run_claim_admission_pilot.py \
+  --suite-id claim-admission-hy3-v2 --limit 50 --repeats 1 --base-seed 20260831
+
+# 7. 运行可审计的 A/B/C/D v3；缓存命名空间必须按 suite 隔离
+SUITE_ID=pilot-abcd-hy3-v3-$(date -u +%Y%m%dT%H%M%SZ)
+.venv/bin/python scripts/run_pilot_ablation.py \
+  --suite-id "$SUITE_ID" --replicates 3 --top-k 12 \
+  --judge-k 7 --judge-temperature 0.7 \
+  --judge-base-seed 20260831 --generator-base-seed 20260831 \
+  --generator-cache-namespace "mitoevidence-$SUITE_ID"
+```
+
+详细安装、配置、数据契约、九维计分和命令说明见
+[`docs/implementation_guide.md`](docs/implementation_guide.md)。运行产物默认写入被 Git 忽略的
+`results/`；受版权限制的全文同样不会提交。
+
+## 6. 文档入口
+
+| 文档 | 内容 |
+|---|---|
+| [`docs/implementation_guide.md`](docs/implementation_guide.md) | 完整工程实现、配置、目录结构与复现命令 |
+| [`docs/completion_status_20260830.md`](docs/completion_status_20260830.md) | 已完成证据、真实 Pilot 结果与不可宣称边界 |
+| [`docs/experiment_results_20260831.md`](docs/experiment_results_20260831.md) | 真实 Hy3 指标、偏差、失败模式、产物哈希与证明范围 |
+| [`docs/proposal.md`](docs/proposal.md) | 方案设计、量表依据与预注册口径 |
+| [`docs/verification_report.md`](docs/verification_report.md) | 文献、数据源和方法学核验记录 |
+| [`eval/rubric.md`](eval/rubric.md) | 九维量表细则与待冻结项 |
+
+当前最准确的项目表述是：
+
+> **MitoEvidence-Hy3 已完成应用和评估工程闭环，以 127 条项目方确认的单一专家共识记录
+> 作为唯一参考，并跑通真实五题、术语正误对和 Claim 准入 Pilot。结果显示术语判别较强但存在
+> 长度偏差，Claim 四分类门禁表现不足；这些小样本结果不等价于大规模医学有效性验证，缺失的
+> 专家字段和专家间一致性不会被推断或补造。**
 
 ---
 
