@@ -1,0 +1,188 @@
+{
+  "schema_version": "terminology-v1",
+  "vocabulary_id": "mitoevidence-project-terms",
+  "version": "0.1.0",
+  "title": "MitoEvidence 项目术语最小示例表",
+  "language": "en-zh",
+  "scope": "仅覆盖 β 细胞线粒体证据综述 MVP 中少量明确术语与已知文本损坏形式。",
+  "authority_disclaimer": "这是项目级本地示例表，不是完整 MeSH、GO 或其他外部本体的镜像；未命中只能判为 unknown。",
+  "provenance": {
+    "source_name": "MitoEvidence project glossary",
+    "source_version": "0.1.0",
+    "source_locator": "eval/data/terminology/project_biomedical_terms_v0_1.json",
+    "curated_by": "MitoEvidence engineering prelabel",
+    "reviewed_at": null,
+    "externally_authority_verified": false,
+    "notes": "少量示例术语来自本项目已冻结场景定义；尚未完成双专家审阅或逐项 MeSH/GO 对齐。"
+  },
+  "terms": [
+    {
+      "term_id": "LOCAL:pancreatic_beta_cell",
+      "preferred_label": "pancreatic beta cell",
+      "aliases": ["pancreatic β cell", "β cell", "beta cell", "胰岛β细胞", "胰岛 β 细胞"],
+      "definition": "位于胰岛并分泌胰岛素的内分泌细胞；本定义仅用于项目内术语对齐。",
+      "provenance": {
+        "source_name": "MitoEvidence project glossary",
+        "source_version": "0.1.0",
+        "source_locator": "project-scope:beta-cell",
+        "curated_by": "MitoEvidence engineering prelabel",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "项目场景核心对象；外部稳定 ID 留待专家和 MeSH 核验。"
+      },
+      "external_identifiers": {}
+    },
+    {
+      "term_id": "LOCAL:mitochondrion",
+      "preferred_label": "mitochondrion",
+      "aliases": ["mitochondria", "线粒体"],
+      "definition": "本项目研究的细胞器对象；单数首选词与复数别名显式分开记录。",
+      "provenance": {
+        "source_name": "MitoEvidence project glossary",
+        "source_version": "0.1.0",
+        "source_locator": "project-scope:mitochondria",
+        "curated_by": "MitoEvidence engineering prelabel",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "项目场景核心对象；未宣称完成 GO 对齐。"
+      },
+      "external_identifiers": {}
+    },
+    {
+      "term_id": "LOCAL:gsis",
+      "preferred_label": "glucose-stimulated insulin secretion",
+      "aliases": ["GSIS", "葡萄糖刺激胰岛素分泌"],
+      "definition": "葡萄糖刺激条件下的胰岛素分泌过程；用于本项目检索和展示。",
+      "provenance": {
+        "source_name": "MitoEvidence project glossary",
+        "source_version": "0.1.0",
+        "source_locator": "project-scope:gsis",
+        "curated_by": "MitoEvidence engineering prelabel",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "项目常用缩写；尚未由外部权威库逐项确认。"
+      },
+      "external_identifiers": {}
+    },
+    {
+      "term_id": "LOCAL:mitochondrial_membrane_potential",
+      "preferred_label": "mitochondrial membrane potential",
+      "aliases": ["MMP", "ΔΨm", "mitochondrial membrane potential (ΔΨm)", "线粒体膜电位"],
+      "definition": "线粒体内膜两侧的电化学势差在本项目中的规范标签。",
+      "provenance": {
+        "source_name": "MitoEvidence project glossary",
+        "source_version": "0.1.0",
+        "source_locator": "project-scope:membrane-potential",
+        "curated_by": "MitoEvidence engineering prelabel",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "MMP 可能在其他语境中歧义；只有输入作为完整术语项时才按显式别名命中。"
+      },
+      "external_identifiers": {}
+    },
+    {
+      "term_id": "LOCAL:mitochondrial_fission",
+      "preferred_label": "mitochondrial fission",
+      "aliases": ["线粒体分裂"],
+      "definition": "线粒体网络发生分裂的过程标签。",
+      "provenance": {
+        "source_name": "MitoEvidence project glossary",
+        "source_version": "0.1.0",
+        "source_locator": "project-scope:fission",
+        "curated_by": "MitoEvidence engineering prelabel",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "项目常用机制词；外部本体映射待核。"
+      },
+      "external_identifiers": {}
+    },
+    {
+      "term_id": "LOCAL:mitochondrial_fusion",
+      "preferred_label": "mitochondrial fusion",
+      "aliases": ["线粒体融合"],
+      "definition": "线粒体网络发生融合的过程标签。",
+      "provenance": {
+        "source_name": "MitoEvidence project glossary",
+        "source_version": "0.1.0",
+        "source_locator": "project-scope:fusion",
+        "curated_by": "MitoEvidence engineering prelabel",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "项目常用机制词；外部本体映射待核。"
+      },
+      "external_identifiers": {}
+    }
+  ],
+  "disabled_terms": [
+    {
+      "form": "Ca¥",
+      "reason": "已知文本编码损坏形式，不能作为规范术语直接发布。",
+      "suggested_label": "Ca²⁺",
+      "provenance": {
+        "source_name": "MitoEvidence terminology prelabel TERM-054",
+        "source_version": "2026-08-28-ai-prelabel",
+        "source_locator": "annotation_prelabel/terminology_blacklist/terminology_blacklist.jsonl#TERM-054",
+        "curated_by": "AI prelabel pending human review",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "只用于确定性识别本地已观察到的损坏字符，不是 MeSH/GO 禁用词。"
+      }
+    },
+    {
+      "form": "K¤",
+      "reason": "已知文本编码损坏形式，不能作为规范术语直接发布。",
+      "suggested_label": "K⁺",
+      "provenance": {
+        "source_name": "MitoEvidence terminology prelabel TERM-054",
+        "source_version": "2026-08-28-ai-prelabel",
+        "source_locator": "annotation_prelabel/terminology_blacklist/terminology_blacklist.jsonl#TERM-054",
+        "curated_by": "AI prelabel pending human review",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "只用于确定性识别本地已观察到的损坏字符，不是 MeSH/GO 禁用词。"
+      }
+    },
+    {
+      "form": "á_ketoglutarate",
+      "reason": "已知希腊字母/分隔符损坏形式。",
+      "suggested_label": "α-ketoglutarate",
+      "provenance": {
+        "source_name": "MitoEvidence terminology prelabel TERM-054",
+        "source_version": "2026-08-28-ai-prelabel",
+        "source_locator": "annotation_prelabel/terminology_blacklist/terminology_blacklist.jsonl#TERM-054",
+        "curated_by": "AI prelabel pending human review",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "本地语料清洗规则，仍需人工确认原文。"
+      }
+    },
+    {
+      "form": "â_cell",
+      "reason": "已知希腊字母/分隔符损坏形式。",
+      "suggested_label": "β-cell",
+      "provenance": {
+        "source_name": "MitoEvidence terminology prelabel TERM-054",
+        "source_version": "2026-08-28-ai-prelabel",
+        "source_locator": "annotation_prelabel/terminology_blacklist/terminology_blacklist.jsonl#TERM-054",
+        "curated_by": "AI prelabel pending human review",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "本地语料清洗规则，仍需人工确认原文。"
+      }
+    },
+    {
+      "form": "INS_1",
+      "reason": "本地语料中观察到的连字符损坏形式。",
+      "suggested_label": "INS-1",
+      "provenance": {
+        "source_name": "MitoEvidence terminology prelabel TERM-054",
+        "source_version": "2026-08-28-ai-prelabel",
+        "source_locator": "annotation_prelabel/terminology_blacklist/terminology_blacklist.jsonl#TERM-054",
+        "curated_by": "AI prelabel pending human review",
+        "reviewed_at": null,
+        "externally_authority_verified": false,
+        "notes": "本地语料清洗规则，仍需人工确认原文。"
+      }
+    }
+  ]
+}

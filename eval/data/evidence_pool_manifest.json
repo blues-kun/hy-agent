@@ -1,0 +1,252 @@
+{
+  "built_at_utc": "2026-08-28T14:12:51+00:00",
+  "tool": "scripts/build_gold_pool.py",
+  "epmc_api_version": "6.9",
+  "epmc_page_size": 100,
+  "trust_env": false,
+  "reviews": [
+    {
+      "index": 1,
+      "pmid": "25659350",
+      "title": "Mitochondrial regulation of β-cell function: maintaining the momentum for insulin release.",
+      "doi": "10.1016/j.mam.2015.01.004",
+      "pmcid": "PMC4404204",
+      "is_open_access": true,
+      "year": 2015,
+      "epmc_hit_count": 144,
+      "refs_source": "epmc",
+      "refs_used": 144
+    },
+    {
+      "index": 2,
+      "pmid": "26873508",
+      "title": "Mitochondrial network regulation and its potential interference with inflammatory signals in pancreatic beta cells.",
+      "doi": "10.1007/s00125-016-3891-x",
+      "pmcid": null,
+      "is_open_access": false,
+      "year": 2016,
+      "epmc_hit_count": 53,
+      "refs_source": "epmc",
+      "refs_used": 53
+    },
+    {
+      "index": 3,
+      "pmid": "28951827",
+      "title": "Transcribing β-cell mitochondria in health and disease.",
+      "doi": "10.1016/j.molmet.2017.05.014",
+      "pmcid": "PMC5605719",
+      "is_open_access": true,
+      "year": 2017,
+      "epmc_hit_count": 262,
+      "refs_source": "epmc",
+      "refs_used": 262
+    },
+    {
+      "index": 4,
+      "pmid": "32894309",
+      "title": "Metabolic and functional specialisations of the pancreatic beta cell: gene disallowance, mitochondrial metabolism and intercellular connectivity.",
+      "doi": "10.1007/s00125-020-05205-5",
+      "pmcid": "PMC7476987",
+      "is_open_access": true,
+      "year": 2020,
+      "epmc_hit_count": 62,
+      "refs_source": "epmc",
+      "refs_used": 62
+    },
+    {
+      "index": 5,
+      "pmid": "33802289",
+      "title": "Mitochondrial Calcium Signaling in Pancreatic β-Cell.",
+      "doi": "10.3390/ijms22052515",
+      "pmcid": "PMC7959128",
+      "is_open_access": true,
+      "year": 2021,
+      "epmc_hit_count": 119,
+      "refs_source": "epmc",
+      "refs_used": 119
+    },
+    {
+      "index": 6,
+      "pmid": "34016598",
+      "title": "A Selective Look at Autophagy in Pancreatic β-Cells.",
+      "doi": "10.2337/dbi20-0014",
+      "pmcid": "PMC8275885",
+      "is_open_access": false,
+      "year": 2021,
+      "epmc_hit_count": 130,
+      "refs_source": "epmc",
+      "refs_used": 130
+    },
+    {
+      "index": 7,
+      "pmid": "37762083",
+      "title": "Mitochondrial Dynamics and Insulin Secretion.",
+      "doi": "10.3390/ijms241813782",
+      "pmcid": "PMC10530730",
+      "is_open_access": true,
+      "year": 2023,
+      "epmc_hit_count": 136,
+      "refs_source": "epmc",
+      "refs_used": 136
+    },
+    {
+      "index": 8,
+      "pmid": "38404962",
+      "title": "Mitochondrial bioenergetics, metabolism, and beyond in pancreatic β-cells and diabetes.",
+      "doi": "10.3389/fmolb.2024.1354199",
+      "pmcid": "PMC10884328",
+      "is_open_access": true,
+      "year": 2024,
+      "epmc_hit_count": 248,
+      "refs_source": "epmc",
+      "refs_used": 248
+    },
+    {
+      "index": 9,
+      "pmid": "39834189",
+      "title": "Physiological Fatty Acid-Stimulated Insulin Secretion and Redox Signaling &lt;i&gt;Versus&lt;/i&gt; Lipotoxicity.",
+      "doi": "10.1089/ars.2024.0799",
+      "pmcid": null,
+      "is_open_access": false,
+      "year": 2025,
+      "epmc_hit_count": 489,
+      "refs_source": "epmc",
+      "refs_used": 489
+    },
+    {
+      "index": 10,
+      "pmid": "40136648",
+      "title": "Breaking the Feedback Loop of β-Cell Failure: Insight into the Pancreatic β-Cell's ER-Mitochondria Redox Balance.",
+      "doi": "10.3390/cells14060399",
+      "pmcid": "PMC11941261",
+      "is_open_access": true,
+      "year": 2025,
+      "epmc_hit_count": 107,
+      "refs_source": "epmc",
+      "refs_used": 107
+    },
+    {
+      "index": 11,
+      "pmid": "41109799",
+      "title": "Mitophagy in the adaptation to pancreatic β cell stress in diabetes.",
+      "doi": "10.1016/j.tem.2025.09.009",
+      "pmcid": null,
+      "is_open_access": false,
+      "year": 2026,
+      "epmc_hit_count": 123,
+      "refs_source": "epmc",
+      "refs_used": 123
+    },
+    {
+      "index": 12,
+      "pmid": "42051080",
+      "title": "Mitochondrial Homeostasis in Pancreatic β Cell Function: Mechanisms and Therapeutic Targets for Diabetes.",
+      "doi": "10.1111/1753-0407.70228",
+      "pmcid": "PMC13125871",
+      "is_open_access": true,
+      "year": 2026,
+      "epmc_hit_count": 170,
+      "refs_source": "epmc",
+      "refs_used": 170
+    }
+  ],
+  "pool": {
+    "total_raw": 2043,
+    "unique": 1623,
+    "duplicates_removed": 420,
+    "dedup_rate": 0.2056,
+    "n_unidentified": 5,
+    "n_cited_by_multiple": 202,
+    "note": "去重键为规范化 DOI/PMID；跨源同文（一处只有 PMID、另一处只有 DOI）无法机械识别，去重率为下界。无标识符条目按规范化题名聚合。"
+  },
+  "fulltext": [
+    {
+      "pmid": "25659350",
+      "pmcid": "PMC4404204",
+      "is_open_access": true,
+      "error": "HTTP 404：非 OA 或无 XML 全文（预期内，容错处理）"
+    },
+    {
+      "pmid": "26873508",
+      "pmcid": null,
+      "error": "无 PMCID，无法取全文"
+    },
+    {
+      "pmid": "28951827",
+      "pmcid": "PMC5605719",
+      "is_open_access": true,
+      "path": "eval/data/corpus_raw/PMC5605719.xml",
+      "bytes": 211286,
+      "sha256": "77c54e6e458712b4af316bfb260347368707b0612d28217018d3e312fe5dc600"
+    },
+    {
+      "pmid": "32894309",
+      "pmcid": "PMC7476987",
+      "is_open_access": true,
+      "path": "eval/data/corpus_raw/PMC7476987.xml",
+      "bytes": 113040,
+      "sha256": "405301f6a10177e575eebc251c4e65c3750686616f4667accba838734dcf15b6"
+    },
+    {
+      "pmid": "33802289",
+      "pmcid": "PMC7959128",
+      "is_open_access": true,
+      "path": "eval/data/corpus_raw/PMC7959128.xml",
+      "bytes": 191187,
+      "sha256": "bf09f921f33f44c6d9e40daf6017541e44e3d03c5209aa3e591825ab8560beac"
+    },
+    {
+      "pmid": "34016598",
+      "pmcid": "PMC8275885",
+      "is_open_access": false,
+      "error": "HTTP 404：非 OA 或无 XML 全文（预期内，容错处理）"
+    },
+    {
+      "pmid": "37762083",
+      "pmcid": "PMC10530730",
+      "is_open_access": true,
+      "path": "eval/data/corpus_raw/PMC10530730.xml",
+      "bytes": 229851,
+      "sha256": "56702db3bdc8d4c33f96bbef0651483faf972c91a7e8d929c5f19044a0420be8"
+    },
+    {
+      "pmid": "38404962",
+      "pmcid": "PMC10884328",
+      "is_open_access": true,
+      "path": "eval/data/corpus_raw/PMC10884328.xml",
+      "bytes": 379810,
+      "sha256": "53c768112e3cd2dce2879b41d7c2ed94b927fe1a74035a0d35fcf1d88128c3ab"
+    },
+    {
+      "pmid": "39834189",
+      "pmcid": null,
+      "error": "无 PMCID，无法取全文"
+    },
+    {
+      "pmid": "40136648",
+      "pmcid": "PMC11941261",
+      "is_open_access": true,
+      "path": "eval/data/corpus_raw/PMC11941261.xml",
+      "bytes": 177987,
+      "sha256": "55255dfc30ad268c1f0af8e951a5129c4f5dc751c9cb16e1aaf2a951a0350f57"
+    },
+    {
+      "pmid": "41109799",
+      "pmcid": null,
+      "error": "无 PMCID，无法取全文"
+    },
+    {
+      "pmid": "42051080",
+      "pmcid": "PMC13125871",
+      "is_open_access": true,
+      "path": "eval/data/corpus_raw/PMC13125871.xml",
+      "bytes": 288884,
+      "sha256": "ad20a609de776840924f6a1902f3bacba0eb80c27c2228b3058dc6ad874f7ef0"
+    }
+  ],
+  "failures": [],
+  "outputs": {
+    "candidates": "eval/data/evidence_pool_candidates.jsonl",
+    "corpus_dir": "eval/data/corpus_raw"
+  }
+}
