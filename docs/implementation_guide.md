@@ -1,7 +1,7 @@
 # MitoEvidence-Hy3：工程实现与复现指南
 
 > 犀牛鸟实战任务 · 开放式场景：AI 应用与评判标准设计
-> 当前工程基线：**应用 MVP v0.3.1 + 专家共识金标 v1 + 未冻结量表 v0.1（2026-08-30）**
+> 当前工程基线：**应用 MVP v0.3.1 + 专家共识金标 v1 + A/B/C/D 正式运行协议 v4 + 未冻结量表 v0.1（2026-08-31）**
 
 ## 这是什么
 
@@ -36,6 +36,7 @@
 | 专家共识金标审计：127条原始快照、逐文件哈希、字段designation与完整性边界 | `evaluator/expert_gold.py` |
 | 有效性统计：判别力、一致性、稳定性与对抗鲁棒性 | `evaluator/validation.py` |
 | Pilot A/B/C/D：无检索、稀疏TF-IDF、冻结证据图、Hy3 Judge门控 | `app/ablation.py` |
+| A/B/C/D v4 正式运行：5题×3重复×4组共60个cell，60/60成功并通过正式产物审计 | `results/pilot_ablations/pilot-abcd-hy3-v4-formal-r1-20260831/`（原始产物不入 Git） |
 | Claim 准入四分类 Pilot：盲输入、严格断点恢复、系统—专家参考指标 | `app/claim_admission_pilot.py` |
 | 术语/条件错误成对 Pilot：哈希固定左右顺序、重复稳定性与偏差基线 | `app/terminology_pair_pilot.py` |
 | 实验产物安全与正式身份门禁：快照、端点、seed、跨组和敏感信息审计 | `evaluator/ablation_artifacts.py`、`evaluator/pilot_identity.py` |
@@ -45,9 +46,9 @@
 | Judge CLI（逐主张判定 + 升级队列 + 成本汇总） | `scripts/run_judge.py` |
 | 金标语料校验 CLI | `scripts/validate_gold.py` |
 | 金标证据池构建 CLI（12 篇综述引文合并去重 + OA 全文下载） | `scripts/build_gold_pool.py` |
-| 580 项离线测试 | `tests/` |
+| 582 项离线测试 | `tests/` |
 
-**当前边界：** 项目负责人确认现有127条记录即本项目唯一专家共识金标；原始文件仍保留历史字段，designation manifest负责解释，不改写来源快照。真实Hy3五题、180次术语判别和50次Claim准入已经运行；专家间一致性不可计算，只能报告自动系统与单份专家参考的一致度。旧结果的逐cell证明范围、失败指标和待完成项见 [`experiment_results_20260831.md`](experiment_results_20260831.md)。
+**当前边界：** 项目负责人确认现有127条记录即本轮唯一专家共识金标；原始文件仍保留历史字段，designation manifest负责解释，不改写来源快照，本轮也不再等待第二位专家或第三人裁决。真实Hy3五题、180次术语判别、50次Claim准入，以及A/B/C/D v4正式运行均已完成。v4共60个cell且60/60成功，产物审计字段为`production_ready=true`；该字段仅表示本轮60个cell的身份与溯源材料完整，不表示整个参赛应用已经可发布。其answerability系统—专家共识一致率依次为A 60.0%、B 66.7%、C 46.7%、D 73.3%。这里的Cohen's κ衡量**系统输出与单一专家共识参考**的一致度，不是专家间可靠性；D相对C的点估计更高，但配对McNemar检验`p=0.125`，不得宣称统计显著优越。正式路径、逐cell证明范围、哈希、失败指标和待完成项见 [`experiment_results_20260831.md`](experiment_results_20260831.md)。完整D1—D9好/中/差判别力与12类输出级攻击尚未完成，因为现有金标没有相应的输出级九维分数，不能补造。
 
 ## 快速开始
 
@@ -57,7 +58,7 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock.txt
 
-# 2. 全量离线回归（580 项；不需要网络和 Key）
+# 2. 全量离线回归（582 项；不需要网络和 Key）
 .venv/bin/python -m pytest
 
 # 3. 首次克隆需按现有 manifest 获取并逐个核验 OA XML（联网；全文不进入 Git）
@@ -91,7 +92,13 @@ set -a && source .env && set +a
 .venv/bin/python scripts/run_terminology_pair_pilot.py \
   --suite-id terminology-pair-hy3-v2 --limit 60 --repeats 3 --base-seed 20260831
 
-# 9. 可审计的真实 A/B/C/D v4：3次生成重复，Judge每条Claim采样7次
+# 9. 复核已完成的正式 A/B/C/D v4；另起运行时必须换新 suite-id
+FORMAL_SUITE_ID=pilot-abcd-hy3-v4-formal-r1-20260831
+.venv/bin/python scripts/audit_pilot_ablation_artifacts.py \
+  --suite-dir "results/pilot_ablations/$FORMAL_SUITE_ID" \
+  --output "results/experiment_audits/$FORMAL_SUITE_ID.artifact_audit.json"
+
+# 如需另起一轮：3次生成重复，Judge每条Claim采样7次
 SUITE_ID=pilot-abcd-hy3-v4-$(date -u +%Y%m%dT%H%M%SZ)
 .venv/bin/python scripts/run_pilot_ablation.py \
   --suite-id "$SUITE_ID" --replicates 3 --top-k 12 \
@@ -121,8 +128,9 @@ SUITE_ID=pilot-abcd-hy3-v4-$(date -u +%Y%m%dT%H%M%SZ)
 
 `verify_citations.py` 默认忽略系统代理直连；确需走代理时加 `--trust-env`。正式九维汇总使用
 `scripts/assemble_evaluation.py`，其输入必须来自已落盘的规则结果、Judge 结果与人工记录；
-不会把缺失维度默认为正确。当前只有一份专家共识参考；缺少输出级专家维度分时，
-`release_ready` 必须保持 `false`，且不得把自动—专家一致度写成专家间可靠性。
+不会把缺失维度默认为正确。当前只有项目负责人确认的一份专家共识参考，本轮不会再
+等待第二位专家；缺少输出级专家维度分时，`release_ready` 必须保持 `false`，且不得把
+系统—专家共识一致度写成专家间可靠性。双专家独立评分与第三人裁决仅是未来扩展方案。
 
 ### 用计分引擎打一份分
 
