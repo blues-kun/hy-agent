@@ -73,10 +73,12 @@ from evaluator.schemas import (
 
 LEGACY_ABLATION_ARTIFACT_VERSION = "mitoevidence.pilot-ablation.v1"
 ABLATION_ARTIFACT_VERSION_V2 = "mitoevidence.pilot-ablation.v2"
-ABLATION_ARTIFACT_VERSION = "mitoevidence.pilot-ablation.v3"
+ABLATION_ARTIFACT_VERSION_V3 = "mitoevidence.pilot-ablation.v3"
+ABLATION_ARTIFACT_VERSION = "mitoevidence.pilot-ablation.v4"
 SUPPORTED_ABLATION_ARTIFACT_VERSIONS = (
     LEGACY_ABLATION_ARTIFACT_VERSION,
     ABLATION_ARTIFACT_VERSION_V2,
+    ABLATION_ARTIFACT_VERSION_V3,
     ABLATION_ARTIFACT_VERSION,
 )
 GENERATOR_SEED_POLICY = (
@@ -255,6 +257,12 @@ class GeneratorProvenance(StrictModel):
     cache_namespace: str = Field(
         pattern=r"^mitoevidence-[A-Za-z0-9_.-]{1,96}$"
     )
+    max_parse_retries: int = Field(default=2, ge=0)
+    fallback_channel: str = "json_schema"
+    max_attempts: int = Field(default=4, ge=1)
+    repair_policy: Literal["bounded_schema_repair_v1"] = (
+        "bounded_schema_repair_v1"
+    )
 
     @model_validator(mode="after")
     def _identity_is_safe(self) -> "GeneratorProvenance":
@@ -287,6 +295,18 @@ class GeneratorProvenance(StrictModel):
             raise ValueError(f"generator temperature 必须冻结为 {GENERATOR_TEMPERATURE}")
         if self.execution_kind == "remote_hy3" and self.provider != "tencent-tokenhub":
             raise ValueError("remote_hy3 generator provider 必须是 tencent-tokenhub")
+        if self.fallback_channel not in {"", "json_schema"}:
+            raise ValueError("generator fallback_channel 只能为空或 json_schema")
+        expected_attempts = (
+            1
+            + self.max_parse_retries
+            + (1 if self.fallback_channel else 0)
+        )
+        if self.max_attempts != expected_attempts:
+            raise ValueError(
+                "generator max_attempts 必须等于 "
+                "1 + max_parse_retries + fallback_channel_enabled"
+            )
         return self
 
 
@@ -512,6 +532,7 @@ class AblationCellArtifact(StrictModel):
         "mitoevidence.pilot-ablation.v1",
         "mitoevidence.pilot-ablation.v2",
         "mitoevidence.pilot-ablation.v3",
+        "mitoevidence.pilot-ablation.v4",
     ] = ABLATION_ARTIFACT_VERSION
     arm: PilotArm
     arm_definition: ArmDefinition
@@ -563,16 +584,19 @@ class AblationCellArtifact(StrictModel):
         passage_ids = [passage.passage_id for passage in self.passages]
         if self.retrieval.selected_passage_ids != passage_ids:
             raise ValueError("retrieval.selected_passage_ids 必须与 passages 顺序完全一致")
-        if self.schema_version == ABLATION_ARTIFACT_VERSION:
+        if self.schema_version in {
+            ABLATION_ARTIFACT_VERSION_V3,
+            ABLATION_ARTIFACT_VERSION,
+        }:
             if self.generator_provenance is None:
-                raise ValueError("v3 cell 必须保存 generator_provenance")
+                raise ValueError("v3/v4 cell 必须保存 generator_provenance")
             expected_stages = (
                 ["ablation_A_direct"]
                 if self.arm is PilotArm.A
                 else ["plan", "synthesis"]
             )
             if [call.stage for call in self.model_calls] != expected_stages:
-                raise ValueError("v3 cell model_calls stage 组合不合规")
+                raise ValueError("v3/v4 cell model_calls stage 组合不合规")
             generation_arm = PilotArm.C.value if self.arm is PilotArm.D else self.arm.value
             for call in self.model_calls:
                 identity = self.generator_provenance
@@ -584,7 +608,7 @@ class AblationCellArtifact(StrictModel):
                     or call.config_sha256 != identity.config_sha256
                     or call.temperature != identity.temperature
                 ):
-                    raise ValueError("v3 cell model_call 与 generator_provenance identity 不一致")
+                    raise ValueError("v3/v4 cell model_call 与 generator_provenance identity 不一致")
                 seed_replicate = 0 if call.stage == "plan" else self.replicate
                 seed_arm = "shared" if call.stage == "plan" else generation_arm
                 expected_seed = derive_generator_seed(
@@ -602,9 +626,9 @@ class AblationCellArtifact(StrictModel):
                     call.stage,
                 )
                 if call.requested_seed != expected_seed:
-                    raise ValueError("v3 cell model_call requested_seed 不符合冻结派生策略")
+                    raise ValueError("v3/v4 cell model_call requested_seed 不符合冻结派生策略")
                 if call.cache_namespace != expected_namespace:
-                    raise ValueError("v3 cell model_call cache_namespace 不符合冻结派生策略")
+                    raise ValueError("v3/v4 cell model_call cache_namespace 不符合冻结派生策略")
                 hash_fields = (
                     call.prompt_sha256,
                     call.base_prompt_sha256,
@@ -613,9 +637,24 @@ class AblationCellArtifact(StrictModel):
                     call.structured_output_sha256,
                 )
                 if any(not re.fullmatch(r"[0-9a-f]{64}", value) for value in hash_fields):
-                    raise ValueError("v3 cell model_call 必须保存完整 prompt/schema/response/output hash")
-                if call.attempt_count != 1:
+                    raise ValueError("v3/v4 cell model_call 必须保存完整 prompt/schema/response/output hash")
+                if (
+                    self.schema_version == ABLATION_ARTIFACT_VERSION_V3
+                    and call.attempt_count != 1
+                ):
                     raise ValueError("v3 formal cell 当前只允许无需 repair 的单次成功调用")
+                if self.schema_version == ABLATION_ARTIFACT_VERSION:
+                    if not 1 <= call.attempt_count <= identity.max_attempts:
+                        raise ValueError(
+                            "v4 cell attempt_count 必须在 1..max_attempts 内"
+                        )
+                    if (
+                        call.attempt_count == 1
+                        and call.prompt_sha256 != call.base_prompt_sha256
+                    ):
+                        raise ValueError(
+                            "v4 单次成功调用的 prompt 必须等于 base prompt"
+                        )
         if self.arm is not PilotArm.D and self.claim_gates:
             raise ValueError("只有 Arm D 可以包含 claim_gates")
         if self.arm is PilotArm.D:
@@ -680,10 +719,11 @@ class AblationCellArtifact(StrictModel):
             if self.judge_provenance is None:
                 return self
             if (
-                self.schema_version == ABLATION_ARTIFACT_VERSION
+                self.schema_version
+                in {ABLATION_ARTIFACT_VERSION_V3, ABLATION_ARTIFACT_VERSION}
                 and self.judge_provenance.base_seed is None
             ):
-                raise ValueError("v3 Arm D Judge base_seed 不得为空")
+                raise ValueError("v3/v4 Arm D Judge base_seed 不得为空")
             gate_ids = [gate.claim_id for gate in self.claim_gates]
             call_ids = [call.claim_id for call in self.judge_provenance.calls]
             if call_ids != gate_ids:
@@ -745,9 +785,12 @@ class AblationCellArtifact(StrictModel):
                     if call.derived_base_seed is not None
                     else self.judge_provenance.base_seed
                 )
-                if self.schema_version == ABLATION_ARTIFACT_VERSION:
+                if self.schema_version in {
+                    ABLATION_ARTIFACT_VERSION_V3,
+                    ABLATION_ARTIFACT_VERSION,
+                }:
                     if self.judge_provenance.base_seed is None:
-                        raise ValueError("v3 Judge root seed 不得为空")
+                        raise ValueError("v3/v4 Judge root seed 不得为空")
                     expected_derived = derive_judge_claim_seed(
                         self.judge_provenance.base_seed,
                         self.question_id,
@@ -830,6 +873,7 @@ class PilotAblationSuiteState(StrictModel):
         "mitoevidence.pilot-ablation.v1",
         "mitoevidence.pilot-ablation.v2",
         "mitoevidence.pilot-ablation.v3",
+        "mitoevidence.pilot-ablation.v4",
     ] = ABLATION_ARTIFACT_VERSION
     suite_id: str
     status: SuiteStatus
@@ -861,17 +905,21 @@ class PilotAblationSuiteState(StrictModel):
     @model_validator(mode="after")
     def _grid_is_auditable(self) -> "PilotAblationSuiteState":
         if (
-            self.schema_version == ABLATION_ARTIFACT_VERSION
+            self.schema_version
+            in {ABLATION_ARTIFACT_VERSION_V3, ABLATION_ARTIFACT_VERSION}
             and self.generator_provenance is None
         ):
-            raise ValueError("v3 suite 必须在顶层固定 generator_provenance")
-        if self.schema_version == ABLATION_ARTIFACT_VERSION:
+            raise ValueError("v3/v4 suite 必须在顶层固定 generator_provenance")
+        if self.schema_version in {
+            ABLATION_ARTIFACT_VERSION_V3,
+            ABLATION_ARTIFACT_VERSION,
+        }:
             if self.judge_provenance_identity is None:
-                raise ValueError("v3 suite 必须在顶层固定 judge_provenance_identity")
+                raise ValueError("v3/v4 suite 必须在顶层固定 judge_provenance_identity")
             if self.judge_provenance_identity.base_seed is None:
-                raise ValueError("v3 formal suite 的 Judge base_seed 不得为空")
+                raise ValueError("v3/v4 formal suite 的 Judge base_seed 不得为空")
             if self.judge_provenance_identity.k != self.judge_k:
-                raise ValueError("v3 suite judge_k 与 Judge provenance 不一致")
+                raise ValueError("v3/v4 suite judge_k 与 Judge provenance 不一致")
         if Counter(definition.arm for definition in self.arm_definitions) != Counter(PilotArm):
             raise ValueError("arm_definitions 必须且只能包含 A/B/C/D 各一次")
         if self.arm_definitions != list(ARM_DEFINITIONS):
@@ -1055,7 +1103,7 @@ def audit_pilot_ablation_grid(state: PilotAblationSuiteState) -> dict[str, objec
 
 class AblationReviewModel(Protocol):
     @property
-    def audit_identity(self) -> dict[str, str]: ...
+    def audit_identity(self) -> dict[str, object]: ...
 
     def plan(
         self,
@@ -1442,7 +1490,7 @@ class PilotAblationRunner:
         claim_gate: ClaimGate,
         top_k: int = 12,
         generator_base_seed: int = 20260831,
-        generator_cache_namespace: str = "mitoevidence-ablation-v3",
+        generator_cache_namespace: str = "mitoevidence-ablation-v4",
     ):
         if top_k <= 0:
             raise ValueError("top_k 必须为正整数")
@@ -1462,7 +1510,7 @@ class PilotAblationRunner:
             }
         )
         if claim_gate.provenance_identity.base_seed is None:
-            raise ValueError("v3 formal ablation 要求 Judge base_seed 非空")
+            raise ValueError("v4 formal ablation 要求 Judge base_seed 非空")
         passages = corpus.load()
         self.tfidf = SparseTfidfIndex(passages)
         self.graph = FrozenEvidenceGraphRetriever(self.tfidf)

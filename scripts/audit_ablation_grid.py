@@ -19,6 +19,7 @@ RUNTIME_INPUT_SCHEMAS = (
     "mitoevidence.pilot-ablation.v1",
     "mitoevidence.pilot-ablation.v2",
     "mitoevidence.pilot-ablation.v3",
+    "mitoevidence.pilot-ablation.v4",
 )
 RUNTIME_INPUT_SCHEMA = RUNTIME_INPUT_SCHEMAS[-1]
 

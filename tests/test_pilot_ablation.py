@@ -13,6 +13,8 @@ from types import SimpleNamespace
 import pytest
 
 from app.ablation import (
+    ABLATION_ARTIFACT_VERSION,
+    ABLATION_ARTIFACT_VERSION_V3,
     AblationCellArtifact,
     CellOutcome,
     GeneratorProvenance,
@@ -182,6 +184,10 @@ class _Model:
         return {
             "execution_kind": "test_fixture",
             **FIXTURE_MODEL_IDENTITY,
+            "max_parse_retries": 2,
+            "fallback_channel": "json_schema",
+            "max_attempts": 4,
+            "repair_policy": "bounded_schema_repair_v1",
         }
 
     @staticmethod
@@ -490,6 +496,102 @@ def test_generator_provenance_rejects_endpoint_credentials_or_query(endpoint_url
         )
 
 
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"max_parse_retries": 2, "fallback_channel": "json_schema", "max_attempts": 3}, "max_attempts"),
+        ({"max_parse_retries": 2, "fallback_channel": "", "max_attempts": 4}, "max_attempts"),
+        ({"fallback_channel": "function_calling"}, "fallback_channel"),
+    ],
+)
+def test_generator_provenance_rejects_incoherent_bounded_repair_identity(
+    overrides: dict[str, object],
+    message: str,
+):
+    payload = {
+        "execution_kind": "test_fixture",
+        "provider": "fixture",
+        "model": "fake",
+        "endpoint_origin": "https://example.invalid",
+        "endpoint_url": "https://example.invalid/v1/chat/completions",
+        "config_sha256": "0" * 64,
+        "base_seed": 1,
+        "cache_namespace": "mitoevidence-fixture",
+        "max_parse_retries": 2,
+        "fallback_channel": "json_schema",
+        "max_attempts": 4,
+        "repair_policy": "bounded_schema_repair_v1",
+        **overrides,
+    }
+    with pytest.raises(ValueError, match=message):
+        GeneratorProvenance.model_validate(payload)
+
+
+def _a_artifact_payload(tmp_path: Path) -> dict[str, object]:
+    root = _fixture_repo(tmp_path)
+    runner = PilotAblationRunner(
+        model=_Model(),
+        corpus=FrozenReviewCorpus(root),
+        claim_gate=_Gate(),
+        top_k=2,
+    )
+    artifact = runner.run_a(
+        ReviewRequest(question_id="Q1", question="How does calcium help?"),
+        1,
+    )
+    return artifact.model_dump(mode="json")
+
+
+def test_v3_still_rejects_a_repaired_generator_call(tmp_path: Path):
+    payload = _a_artifact_payload(tmp_path)
+    payload["schema_version"] = ABLATION_ARTIFACT_VERSION_V3
+    payload["model_calls"][0]["attempt_count"] = 2
+    payload["model_calls"][0]["prompt_sha256"] = "f" * 64
+
+    with pytest.raises(ValueError, match="v3 formal cell"):
+        AblationCellArtifact.model_validate(payload)
+
+
+@pytest.mark.parametrize("attempt_count", [2, 4])
+def test_v4_accepts_a_bounded_repaired_generator_call(
+    tmp_path: Path,
+    attempt_count: int,
+):
+    payload = _a_artifact_payload(tmp_path)
+    payload["model_calls"][0]["attempt_count"] = attempt_count
+    payload["model_calls"][0]["prompt_sha256"] = "f" * 64
+
+    artifact = AblationCellArtifact.model_validate(payload)
+
+    assert artifact.schema_version == ABLATION_ARTIFACT_VERSION
+    assert artifact.model_calls[0].attempt_count == attempt_count
+    assert (
+        artifact.model_calls[0].prompt_sha256
+        != artifact.model_calls[0].base_prompt_sha256
+    )
+
+
+@pytest.mark.parametrize("attempt_count", [0, 5])
+def test_v4_rejects_a_generator_call_outside_the_frozen_bound(
+    tmp_path: Path,
+    attempt_count: int,
+):
+    payload = _a_artifact_payload(tmp_path)
+    payload["model_calls"][0]["attempt_count"] = attempt_count
+
+    with pytest.raises(ValueError, match=r"1\.\.max_attempts"):
+        AblationCellArtifact.model_validate(payload)
+
+
+def test_v4_single_attempt_must_bind_the_base_prompt(tmp_path: Path):
+    payload = _a_artifact_payload(tmp_path)
+    payload["model_calls"][0]["attempt_count"] = 1
+    payload["model_calls"][0]["prompt_sha256"] = "f" * 64
+
+    with pytest.raises(ValueError, match="prompt 必须等于 base prompt"):
+        AblationCellArtifact.model_validate(payload)
+
+
 def _input_file(tmp_path: Path) -> Path:
     path = tmp_path / "pilot.jsonl"
     path.write_text(
@@ -583,10 +685,14 @@ def test_suite_runs_all_four_arms_with_fixed_plan_and_exact_c_parent(tmp_path: P
         input_path=_input_file(tmp_path),
     )
     assert state.status.value == "completed"
-    assert state.schema_version == "mitoevidence.pilot-ablation.v3"
+    assert state.schema_version == "mitoevidence.pilot-ablation.v4"
     assert state.generator_provenance is not None
     assert state.generator_provenance.base_seed == 20260831
     assert state.generator_provenance.endpoint_url == "https://fixture.invalid/v1/chat/completions"
+    assert state.generator_provenance.max_parse_retries == 2
+    assert state.generator_provenance.fallback_channel == "json_schema"
+    assert state.generator_provenance.max_attempts == 4
+    assert state.generator_provenance.repair_policy == "bounded_schema_repair_v1"
     assert state.judge_provenance_identity is not None
     assert state.judge_provenance_identity.base_seed == 100
     assert state.expected_grid_cells == 8
@@ -734,7 +840,7 @@ def test_v3_artifact_audit_requires_byte_bound_journals_and_archived_snapshots(
         assert any(error["code"] == expected_code for error in result["errors"])
 
 
-def test_v3_artifact_audit_rebuilds_prompt_instead_of_trusting_hash(tmp_path: Path):
+def test_v4_artifact_audit_rejects_single_attempt_prompt_tampering(tmp_path: Path):
     root = _fixture_repo(tmp_path)
     runner = PilotAblationRunner(
         model=_Model(),
@@ -781,7 +887,8 @@ def test_v3_artifact_audit_rebuilds_prompt_instead_of_trusting_hash(tmp_path: Pa
     result = audit_pilot_ablation_artifacts(suite_dir, allow_test_fixture=True)
     assert result["structural_audit_ok"] is False
     assert any(
-        error["code"] == "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING"
+        error["code"] == "CELL_ARTIFACT_SCHEMA_INVALID"
+        and "prompt 必须等于 base prompt" in error["detail"]
         for error in result["errors"]
     )
 
@@ -1073,6 +1180,16 @@ class _Session:
         return _Response(self.payload)
 
 
+class _SequenceSession(_Session):
+    def __init__(self, payloads):
+        super().__init__(None)
+        self.payloads = list(payloads)
+
+    def request(self, method, url, json=None, headers=None, timeout=None):
+        self.calls.append(json)
+        return _Response(self.payloads[len(self.calls) - 1])
+
+
 def _direct_body(evidence_ids):
     arguments = {
         "answerability": "answerable",
@@ -1119,6 +1236,58 @@ def _direct_body(evidence_ids):
     }
 
 
+def _invalid_structured_body():
+    return {
+        "choices": [{"message": {"content": "not valid JSON"}}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    }
+
+
+def _fallback_direct_body():
+    tool_call = _direct_body([])["choices"][0]["message"]["tool_calls"][0]
+    return {
+        "choices": [
+            {
+                "message": {
+                    "content": tool_call["function"]["arguments"],
+                }
+            }
+        ],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    }
+
+
+@pytest.mark.parametrize("success_attempt", [2, 4])
+def test_hy3_runtime_records_the_bounded_success_attempt(success_attempt: int):
+    final_body = _direct_body([]) if success_attempt == 2 else _fallback_direct_body()
+    session = _SequenceSession(
+        [
+            *[_invalid_structured_body() for _ in range(success_attempt - 1)],
+            final_body,
+        ]
+    )
+    model = Hy3ReviewModel(
+        api_key="dummy",
+        base_url="https://example.invalid/v1",
+        session=session,
+        sleep_fn=lambda _: None,
+    )
+
+    _, audit = model.synthesize_direct(
+        ReviewRequest(question_id="Q", question="scientific question")
+    )
+
+    assert len(session.calls) == success_attempt
+    assert audit.attempt_count == success_attempt
+    assert audit.prompt_sha256 != audit.base_prompt_sha256
+    if success_attempt == 4:
+        assert audit.parse_source == "content_json"
+        assert session.calls[-1]["response_format"]["type"] == "json_schema"
+    else:
+        assert audit.parse_source == "tool_call"
+        assert "tools" in session.calls[-1]
+
+
 def test_production_direct_method_forbids_invented_passage_evidence():
     clean_session = _Session(_direct_body([]))
     model = Hy3ReviewModel(
@@ -1130,6 +1299,10 @@ def test_production_direct_method_forbids_invented_passage_evidence():
     review, audit = model.synthesize_direct(
         ReviewRequest(question_id="Q", question="scientific question")
     )
+    assert model.audit_identity["max_parse_retries"] == 2
+    assert model.audit_identity["fallback_channel"] == "json_schema"
+    assert model.audit_identity["max_attempts"] == 4
+    assert model.audit_identity["repair_policy"] == "bounded_schema_repair_v1"
     assert review.claims[0].evidence_passage_ids == []
     assert audit.stage == "ablation_A_direct"
     assert "没有外部检索" in clean_session.calls[0]["messages"][0]["content"]
@@ -1184,7 +1357,7 @@ def test_ablation_cli_has_no_offline_mode_and_fails_before_network_without_key(
         capture_output=True,
         text=True,
     )
-    assert "formal v3 要求显式 --judge-base-seed" in missing_seed.stderr
+    assert "formal v4 要求显式 --judge-base-seed" in missing_seed.stderr
     custom_input = tmp_path / "custom.jsonl"
     custom_input.write_text(
         json.dumps({"question_id": "PILOT-01", "question": "tampered"}) + "\n",

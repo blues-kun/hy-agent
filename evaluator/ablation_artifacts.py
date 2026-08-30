@@ -19,6 +19,8 @@ from urllib.parse import urlsplit
 from pydantic import Field, model_validator
 
 from app.ablation import (
+    ABLATION_ARTIFACT_VERSION,
+    ABLATION_ARTIFACT_VERSION_V3,
     ABLATION_FORMAL_STATUS_BY_SCHEMA_VERSION,
     ARM_DEFINITION_BY_ID,
     FAILURE_REDACTION_POLICY,
@@ -52,7 +54,11 @@ from evaluator.pilot_identity import is_formal_hy3_metadata
 from evaluator.schemas import StrictModel
 
 
-ARTIFACT_AUDIT_SCHEMA_VERSION = "mitoevidence.pilot-ablation-artifact-audit.v3"
+ARTIFACT_AUDIT_SCHEMA_VERSION = "mitoevidence.pilot-ablation-artifact-audit.v4"
+FORMAL_ABLATION_SCHEMA_VERSIONS = {
+    ABLATION_ARTIFACT_VERSION_V3,
+    ABLATION_ARTIFACT_VERSION,
+}
 EXPECTED_SUCCESS_FILES = {
     "artifact.json",
     "review.json",
@@ -76,6 +82,7 @@ class CellManifest(StrictModel):
         "mitoevidence.pilot-ablation.v1",
         "mitoevidence.pilot-ablation.v2",
         "mitoevidence.pilot-ablation.v3",
+        "mitoevidence.pilot-ablation.v4",
     ]
     question_id: str
     replicate: int = Field(ge=1)
@@ -106,7 +113,7 @@ class FailureArtifact(StrictModel):
         "mitoevidence.pilot-ablation.v1",
         "mitoevidence.pilot-ablation.v2",
         "mitoevidence.pilot-ablation.v3",
-        "mitoevidence.pilot-ablation.v3",
+        "mitoevidence.pilot-ablation.v4",
     ]
     question_id: str
     replicate: int = Field(ge=1)
@@ -121,17 +128,18 @@ class FailureArtifact(StrictModel):
         if self.schema_version in {
             "mitoevidence.pilot-ablation.v2",
             "mitoevidence.pilot-ablation.v3",
+            "mitoevidence.pilot-ablation.v4",
         }:
             if (
                 self.security.failure_text_sanitized is not True
                 or self.security.redaction_policy != FAILURE_REDACTION_POLICY
             ):
-                raise ValueError("v2/v3 failure artifact 必须记录已执行的脱敏策略")
+                raise ValueError("v2/v3/v4 failure artifact 必须记录已执行的脱敏策略")
         if (
-            self.schema_version == "mitoevidence.pilot-ablation.v3"
+            self.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
             and self.security.contains_reasoning_content is not False
         ):
-            raise ValueError("v3 failure artifact 必须声明不含 reasoning_content")
+            raise ValueError("v3/v4 failure artifact 必须声明不含 reasoning_content")
         return self
 
 
@@ -191,7 +199,7 @@ def _audit_top_level_files(
     same bytes to ``suite_summary.json``; comparing bytes (rather than parsed
     models) prevents a coordinated formatting or duplicate-key ambiguity.
 
-    Archived source snapshots became part of the formal v3 contract.  They are
+    Archived source snapshots became part of the formal v3/v4 contract.  They are
     not retroactively required from v1/v2 suites, whose audit remains an
     explicitly non-formal legacy structural check.
     """
@@ -250,9 +258,7 @@ def _audit_top_level_files(
             errors.append(_issue("SUITE_SUMMARY_READ_ERROR", str(exc)))
     files["suite_summary"] = summary_result
 
-    snapshots_required = (
-        state.schema_version == "mitoevidence.pilot-ablation.v3"
-    )
+    snapshots_required = state.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
     snapshot_specs = (
         (
             "pilot_input_snapshot",
@@ -318,6 +324,8 @@ def _audit_top_level_files(
     return (
         {
             "ok": not errors,
+            "formal_schema_snapshots_required": snapshots_required,
+            # Backward-compatible output key retained through audit schema v4.
             "formal_v3_snapshots_required": snapshots_required,
             "files": files,
             "errors": errors,
@@ -794,7 +802,7 @@ def _cross_arm_checks(
             (question_id, replicate, PilotArm.C)
         )
         canonical_hash_applicable = (
-            c_artifact.schema_version == "mitoevidence.pilot-ablation.v3"
+            c_artifact.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
         )
         parent_canonical_ok: bool | None = (
             d_artifact.parent_c_artifact_sha256 == expected_parent
@@ -860,7 +868,10 @@ def _cross_arm_checks(
         provenance = d_artifact.judge_provenance
         provenance_details: dict[str, Any]
         judge_suite_identity_ok = True
-        if provenance is not None and state.schema_version == "mitoevidence.pilot-ablation.v3":
+        if (
+            provenance is not None
+            and state.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
+        ):
             recorded_identity = {
                 field: getattr(provenance, field)
                 for field in type(state.judge_provenance_identity).model_fields
@@ -932,7 +943,7 @@ def _cross_arm_checks(
                 and recorded_prompt_hashes == expected_prompt_hashes
             )
             formal_identity_required = (
-                state.schema_version == "mitoevidence.pilot-ablation.v3"
+                state.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
             )
             provenance_ok = (
                 schema_ok
@@ -1027,7 +1038,9 @@ def _generator_identity_checks(
     identities: list[tuple[str, str, str, str, str]] = []
     plan_calls: dict[str, list[ModelCallAudit]] = {}
     contains_test_fixture = False
-    v3 = state.schema_version == "mitoevidence.pilot-ablation.v3"
+    formal_schema = state.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
+    v3 = state.schema_version == ABLATION_ARTIFACT_VERSION_V3
+    v4 = state.schema_version == ABLATION_ARTIFACT_VERSION
     for key, artifact in sorted(
         artifacts.items(),
         key=lambda item: (item[0][0], item[0][1], item[0][2].value),
@@ -1089,7 +1102,7 @@ def _generator_identity_checks(
                 "identity_fields_complete": identity_fields_ok,
             }
         )
-        if not v3:
+        if not formal_schema:
             checks.append(
                 {
                     "check": "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING",
@@ -1099,7 +1112,7 @@ def _generator_identity_checks(
                     "status": "legacy_v1_v2_provenance_unavailable",
                     "detail": (
                         "v1/v2 可做原始 artifact bytes/hash 的 structural audit，"
-                        "但不具备 v3 generator prompt/schema/output/seed contract"
+                        "但不具备 v3/v4 generator prompt/schema/output/seed contract"
                     ),
                 }
             )
@@ -1111,6 +1124,7 @@ def _generator_identity_checks(
             and state.generator_provenance is not None
             and provenance == state.generator_provenance
         )
+        max_attempts = provenance.max_attempts if provenance is not None else 0
         per_call: list[dict[str, Any]] = []
         for call in artifact.model_calls:
             prompt_request = artifact.request
@@ -1140,10 +1154,24 @@ def _generator_identity_checks(
                 else ""
             )
             expected_max_tokens = 8192 if call.stage == "synthesis" else 4096
+            repaired_prompt_hash_shape_ok = bool(
+                re.fullmatch(r"[0-9a-f]{64}", call.prompt_sha256)
+            )
+            one_shot_prompt_ok = call.prompt_sha256 == expected_prompt
+            attempt_in_bounds = (
+                call.attempt_count == 1
+                if v3
+                else v4 and 1 <= call.attempt_count <= max_attempts
+            )
+            successful_prompt_ok = (
+                one_shot_prompt_ok
+                if v3 or call.attempt_count == 1
+                else repaired_prompt_hash_shape_ok
+            )
             call_ok = (
                 call.base_prompt_sha256 == expected_prompt
                 and call.base_prompt_hash_scope == GENERATOR_BASE_PROMPT_HASH_SCOPE
-                and call.prompt_sha256 == expected_prompt
+                and successful_prompt_ok
                 and call.prompt_hash_scope == GENERATOR_PROMPT_HASH_SCOPE
                 and call.schema_sha256 == expected_schema
                 and call.structured_output_sha256 == expected_output
@@ -1154,16 +1182,28 @@ def _generator_identity_checks(
                 and call.reasoning_effort == GENERATOR_REASONING_EFFORT
                 and call.max_tokens == expected_max_tokens
                 and call.parse_source in {"tool_call", "content_json"}
-                and call.attempt_count == 1
+                and attempt_in_bounds
             )
             per_call.append(
                 {
                     "stage": call.stage,
                     "ok": call_ok,
+                    "contract_schema": state.schema_version,
                     "base_prompt_matches_inputs": call.base_prompt_sha256
                     == expected_prompt,
-                    "successful_prompt_matches_base_no_repair": call.prompt_sha256
-                    == expected_prompt,
+                    "successful_prompt_matches_base_no_repair": (
+                        one_shot_prompt_ok if call.attempt_count == 1 else None
+                    ),
+                    "successful_repair_prompt_hash_shape_valid": (
+                        repaired_prompt_hash_shape_ok
+                        if call.attempt_count > 1
+                        else None
+                    ),
+                    "successful_prompt_binding_level": (
+                        "exact_base_prompt_reconstructed"
+                        if call.attempt_count == 1
+                        else "hash_shape_only_repair_trace_not_retained"
+                    ),
                     "schema_matches_runtime": call.schema_sha256 == expected_schema,
                     "structured_output_matches_artifact": call.structured_output_sha256
                     == expected_output,
@@ -1174,8 +1214,13 @@ def _generator_identity_checks(
                         call.temperature == 0.2
                         and call.max_tokens == expected_max_tokens
                         and call.parse_source in {"tool_call", "content_json"}
-                        and call.attempt_count == 1
+                        and attempt_in_bounds
                     ),
+                    "attempt_count": call.attempt_count,
+                    "max_attempts": max_attempts,
+                    "one_shot": call.attempt_count == 1,
+                    "repaired": call.attempt_count > 1,
+                    "repair_trace_offline_reconstructable": False,
                 }
             )
         checks.append(
@@ -1184,7 +1229,11 @@ def _generator_identity_checks(
                 "scope": f"{question_id}:replicate-{replicate:02d}:{arm.value}",
                 "ok": provenance_ok and all(row["ok"] for row in per_call),
                 "applicable": True,
+                "contract_schema": state.schema_version,
                 "cell_provenance_matches_suite": provenance_ok,
+                "repair_policy": (
+                    provenance.repair_policy if provenance is not None else None
+                ),
                 "calls": per_call,
             }
         )
@@ -1210,10 +1259,10 @@ def _generator_identity_checks(
         )
     )
     production_provider = bool(
-        v3 and derived_formal_identity and declared_formal_identity
+        formal_schema and derived_formal_identity and declared_formal_identity
     )
     identity_accepted_for_schema = (
-        production_provider if v3 else identity_consistent
+        production_provider if formal_schema else identity_consistent
     )
     checks.append(
         {
@@ -1233,7 +1282,7 @@ def _generator_identity_checks(
             ],
             "production_provider": production_provider,
             "formal_hy3_identity_allowlisted": production_provider,
-            "formal_hy3_identity_allowlist_applicable": v3,
+            "formal_hy3_identity_allowlist_applicable": formal_schema,
             "derived_call_identity_allowlisted": derived_formal_identity,
             "declared_suite_identity_allowlisted": declared_formal_identity,
             "test_fixture_allowed": allow_test_fixture,
@@ -1262,6 +1311,84 @@ def _generator_identity_checks(
         else None
     )
     return checks, identity, contains_test_fixture
+
+
+def _generator_attempt_statistics(
+    artifacts: dict[tuple[str, int, PilotArm], AblationCellArtifact],
+) -> dict[str, Any]:
+    """Summarize final successful Generator calls without inventing repair traces.
+
+    An artifact can reference a shared plan call more than once (for example in
+    B and C and across replicates).  The per-arm figures therefore explicitly
+    count *call observations*.  A second suite-level view deduplicates exact
+    ``ModelCallAudit`` records by their canonical hash so shared-plan reuse is
+    not misreported as extra provider calls.
+    """
+
+    observed_by_arm: dict[PilotArm, list[ModelCallAudit]] = {
+        arm: [] for arm in PilotArm
+    }
+    observations: list[ModelCallAudit] = []
+    for (_question_id, _replicate, arm), artifact in sorted(
+        artifacts.items(),
+        key=lambda item: (item[0][0], item[0][1], item[0][2].value),
+    ):
+        # D deterministically reuses C's generation record and performs no
+        # Generator request of its own, so including it would double-count C.
+        if arm not in {PilotArm.A, PilotArm.B, PilotArm.C}:
+            continue
+        observed_by_arm[arm].extend(artifact.model_calls)
+        observations.extend(artifact.model_calls)
+
+    def summarize(calls: list[ModelCallAudit]) -> dict[str, Any]:
+        histogram = Counter(call.attempt_count for call in calls)
+        unique = {_canonical_model_sha256(call): call for call in calls}
+        unique_histogram = Counter(
+            call.attempt_count for call in unique.values()
+        )
+        return {
+            "call_observations": len(calls),
+            "one_shot": sum(call.attempt_count == 1 for call in calls),
+            "repaired": sum(call.attempt_count > 1 for call in calls),
+            "attempt_count": {
+                str(attempt): count for attempt, count in sorted(histogram.items())
+            },
+            "unique_calls": len(unique),
+            "unique_one_shot": sum(
+                call.attempt_count == 1 for call in unique.values()
+            ),
+            "unique_repaired": sum(
+                call.attempt_count > 1 for call in unique.values()
+            ),
+            "unique_attempt_count": {
+                str(attempt): count
+                for attempt, count in sorted(unique_histogram.items())
+            },
+        }
+
+    plan_observations = [call for call in observations if call.stage == "plan"]
+    unique_plan_calls = {
+        _canonical_model_sha256(call) for call in plan_observations
+    }
+    return {
+        "counting_unit": (
+            "call_observation_in_successful_A_B_C_artifact; "
+            "D_excluded_as_deterministic_C_reuse"
+        ),
+        "by_arm": {
+            arm.value: summarize(observed_by_arm[arm]) for arm in PilotArm
+        },
+        "suite_call_observations": summarize(observations),
+        "shared_plan_reuse": {
+            "plan_call_observations": len(plan_observations),
+            "unique_plan_calls": len(unique_plan_calls),
+            "deduplicated_reuse_observations": (
+                len(plan_observations) - len(unique_plan_calls)
+            ),
+            "deduplication_key": "canonical_ModelCallAudit_sha256",
+        },
+        "repair_trace_offline_reconstructable": False,
+    }
 
 
 def audit_pilot_ablation_artifacts(
@@ -1334,6 +1461,7 @@ def audit_pilot_ablation_artifacts(
         )
     )
     cross_checks.extend(generator_checks)
+    generator_attempts = _generator_attempt_statistics(artifacts)
     errors: list[dict[str, str]] = [
         {
             "scope": "suite",
@@ -1392,12 +1520,14 @@ def audit_pilot_ablation_artifacts(
         )
     )
     formal_runtime_identity_ok = bool(
-        state.schema_version == "mitoevidence.pilot-ablation.v3"
+        state.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
         and generator_formal_identity
         and judge_formal_identity
     )
     suite_binding_ok = bool(top_level_files["ok"])
-    legacy_structural_only = state.schema_version != "mitoevidence.pilot-ablation.v3"
+    legacy_structural_only = (
+        state.schema_version not in FORMAL_ABLATION_SCHEMA_VERSIONS
+    )
     non_production = (
         generator_has_fixture
         or judge_has_fixture
@@ -1409,7 +1539,7 @@ def audit_pilot_ablation_artifacts(
         and suite_binding_ok
         and runtime_complete
         and not non_production
-        and state.schema_version == "mitoevidence.pilot-ablation.v3"
+        and state.schema_version in FORMAL_ABLATION_SCHEMA_VERSIONS
     )
     test_fixture_audit_ok = (
         artifact_integrity_ok and runtime_complete
@@ -1469,6 +1599,7 @@ def audit_pilot_ablation_artifacts(
             if state.judge_provenance_identity is not None
             else None
         ),
+        "generator_attempts": generator_attempts,
         "cell_results": cell_results,
         "cross_arm_checks": cross_checks,
         "errors": errors,
@@ -1479,7 +1610,8 @@ def audit_pilot_ablation_artifacts(
             "This audit verifies file integrity and runtime structural invariants; it does not score scientific correctness.",
             "It verifies recorded retrieval artifacts and cross-arm bindings, but does not rerun sparse TF-IDF or graph retrieval from source XML.",
             "New D artifacts retain Judge identity, base-prompt/schema/config hashes and per-sample bindings; this audit does not replay the external calls or retain every repair-attempt message.",
-            "Generator v3 rebinds the validated structured output to plan/review and validates response_sha256 shape/scope; the raw provider message is intentionally not retained, so response_sha256 itself cannot be recomputed offline.",
+            "Generator v3/v4 rebinds the validated structured output to plan/review and validates response_sha256 shape/scope; the raw provider message is intentionally not retained, so response_sha256 itself cannot be recomputed offline.",
+            "For a v4 repaired success, only the final successful prompt hash and attempt_count are retained. Repair prompts, parse errors, failed response bodies and channel-transition messages are not retained, so the repair trace cannot be reconstructed offline; this audit verifies the final prompt hash shape and bounded-attempt contract only.",
             "The internal hash chain has no external signed root in this report; a party able to rewrite every file and hash could construct a different self-consistent suite.",
             "It does not contact Hy3 or any literature service and never rewrites experiment artifacts.",
         ],

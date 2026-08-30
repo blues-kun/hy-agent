@@ -6,7 +6,7 @@
 
 ![Model](https://img.shields.io/badge/MODEL-Hy3-111111?style=flat-square)
 ![Version](https://img.shields.io/badge/MVP-v0.3.1-555555?style=flat-square)
-![Tests](https://img.shields.io/badge/TESTS-564%20PASSING-111111?style=flat-square)
+![Tests](https://img.shields.io/badge/TESTS-580%20PASSING-111111?style=flat-square)
 ![Gold](https://img.shields.io/badge/EXPERT%20GOLD-127-555555?style=flat-square)
 [![Mito Agent](https://img.shields.io/badge/MITO--AGENT-DEPLOYED-111111?style=flat-square)](https://agent.blueskun.com:8444/)
 
@@ -50,9 +50,9 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 | 评测框架 | D1–D9、NA 重归一、四类致命错误上限、PASS/REVIEW/REJECT | `evaluator/rubric.py`、`evaluator/assembly.py` |
 | Hy3 Judge | Function Calling、JSON Schema 备选、本地校验、自一致性与升级队列 | `evaluator/judge/` |
 | 真实有效性 Pilot | 术语正误对 180/180 次、Claim 准入 50/50 次真实 Hy3 调用完成 | `app/terminology_pair_pilot.py`、`app/claim_admission_pilot.py` |
-| A/B/C/D 消融 | v3 固定生成/Judge身份、seed、缓存命名空间、顶层快照、跨组绑定与敏感信息审计 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
+| A/B/C/D 消融 | v4 固定生成/Judge身份、seed、有界结构修复、缓存命名空间、顶层快照、跨组绑定与敏感信息审计 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
 | 实验协议 | 系统—专家参考一致度、判别力、稳定性、对抗性与消融审计入口已实现 | `evaluator/experiment_protocol.py` |
-| 工程验证 | Python 3.11 下 564 项离线测试通过 | `tests/` |
+| 工程验证 | Python 3.11 下 580 项离线测试通过 | `tests/` |
 
 127 条金标来自四类任务，不能当作 127 个同构评分样本混算：
 
@@ -148,8 +148,9 @@ manifest 记录项目方确认的 `expert_consensus_gold` designation，不静�
 
 runner 会记录每个 cell 的成功或失败，并要求 D 绑定精确的 C artifact hash。旧 v2 真实套件的
 20/20 cell 均结构完整且无审计错误，但因缺少完整逐调用身份，只能标为 nonformal。
-新 v3 只有在官方 Hy3 端点、非空 seed、输入/证据快照、成功/失败敏感信息复扫和全部跨组绑定
-同时通过时才可产生 `production_ready=true`；多重复真实结果与置信区间尚未生成。
+新 v4 只有在官方 Hy3 端点、非空 seed、输入/证据快照、成功/失败敏感信息复扫和全部跨组绑定
+同时通过时才可产生 `production_ready=true`。它把已冻结的有界结构修复纳入应用方法，分别报告
+一次通过与修复后完成情况；旧 v3 继续保持“仅一次通过”的历史语义。
 
 判别力、对抗性和稳定性同样按已落地协议运行。当前五题 Pilot 没有原文 EvidenceSpan，也没有
 输出级专家九维总分，因此不能补造完整 D2/D3 金标指标，亦不能报告自动总分对专家总分的
@@ -183,8 +184,8 @@ python3 -m venv .venv
 .venv/bin/python scripts/run_claim_admission_pilot.py \
   --suite-id claim-admission-hy3-v2 --limit 50 --repeats 1 --base-seed 20260831
 
-# 7. 运行可审计的 A/B/C/D v3；缓存命名空间必须按 suite 隔离
-SUITE_ID=pilot-abcd-hy3-v3-$(date -u +%Y%m%dT%H%M%SZ)
+# 7. 运行可审计的 A/B/C/D v4；缓存命名空间必须按 suite 隔离
+SUITE_ID=pilot-abcd-hy3-v4-$(date -u +%Y%m%dT%H%M%SZ)
 .venv/bin/python scripts/run_pilot_ablation.py \
   --suite-id "$SUITE_ID" --replicates 3 --top-k 12 \
   --judge-k 7 --judge-temperature 0.7 \

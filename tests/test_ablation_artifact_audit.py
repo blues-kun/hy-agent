@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 
 from app.ablation import (
+    ABLATION_ARTIFACT_VERSION,
+    ABLATION_ARTIFACT_VERSION_V3,
     ARM_DEFINITION_BY_ID,
     ARM_DEFINITIONS,
     ABLATION_ARTIFACT_VERSION_V2,
@@ -37,8 +39,21 @@ from app.schemas import (
     ReviewRequest,
     SearchPlan,
 )
+from app.hy3_review import (
+    GENERATOR_BASE_PROMPT_HASH_SCOPE,
+    GENERATOR_OUTPUT_HASH_SCOPE,
+    GENERATOR_PROMPT_HASH_SCOPE,
+    GENERATOR_REASONING_EFFORT,
+    GENERATOR_RESPONSE_HASH_SCOPE,
+    generator_base_messages_for_stage,
+    generator_schema_for_stage,
+)
 from evaluator.ablation_artifacts import (
+    ARTIFACT_AUDIT_SCHEMA_VERSION,
+    CellManifest,
+    FailureArtifact,
     _cross_arm_checks,
+    _generator_attempt_statistics,
     _generator_identity_checks,
     audit_pilot_ablation_artifacts as _audit_pilot_ablation_artifacts,
 )
@@ -62,6 +77,12 @@ def _json_bytes(value: object) -> bytes:
 
 def _model_sha(value) -> str:
     return hashlib.sha256(_json_bytes(value.model_dump(mode="json"))).hexdigest()
+
+
+def _generator_json_sha(value: object) -> str:
+    return hashlib.sha256(
+        json.dumps(value, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
 
 
 def _retrieval(arm: PilotArm, passage: CorpusPassage | None) -> RetrievalAudit:
@@ -305,6 +326,88 @@ def _suite(
     (suite / "suite_state.json").write_bytes(state_bytes)
     (suite / "suite_summary.json").write_bytes(state_bytes)
     return suite, state
+
+
+def _formal_generator_fixture(
+    tmp_path: Path,
+    *,
+    schema_version: str,
+    attempt_count: int,
+    successful_prompt_sha256: str | None = None,
+) -> tuple[PilotAblationSuiteState, dict, AblationCellArtifact]:
+    """Build one focused formal A call without invoking the network."""
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    suite, state = _suite(tmp_path)
+    record = next(row for row in state.records if row.arm is PilotArm.A)
+    artifact = AblationCellArtifact.model_validate_json(
+        (suite / record.cell_dir / "artifact.json").read_bytes()
+    )
+    provenance = GeneratorProvenance(
+        execution_kind="remote_hy3",
+        provider="tencent-tokenhub",
+        model="hy3",
+        endpoint_origin="https://tokenhub.tencentmaas.com",
+        endpoint_url="https://tokenhub.tencentmaas.com/v1/chat/completions",
+        config_sha256="9" * 64,
+        base_seed=20260831,
+        cache_namespace="mitoevidence-v4-audit-fixture",
+        max_parse_retries=2,
+        fallback_channel="json_schema",
+        max_attempts=4,
+        repair_policy="bounded_schema_repair_v1",
+    )
+    messages = generator_base_messages_for_stage(
+        "ablation_A_direct",
+        artifact.request,
+        artifact.passages,
+    )
+    base_prompt_sha256 = _generator_json_sha(messages)
+    call = ModelCallAudit(
+        stage="ablation_A_direct",
+        provider=provenance.provider,
+        model=provenance.model,
+        endpoint_origin=provenance.endpoint_origin,
+        endpoint_url=provenance.endpoint_url,
+        prompt_sha256=(
+            successful_prompt_sha256
+            if successful_prompt_sha256 is not None
+            else base_prompt_sha256
+        ),
+        base_prompt_sha256=base_prompt_sha256,
+        base_prompt_hash_scope=GENERATOR_BASE_PROMPT_HASH_SCOPE,
+        prompt_hash_scope=GENERATOR_PROMPT_HASH_SCOPE,
+        schema_sha256=_generator_json_sha(
+            generator_schema_for_stage("ablation_A_direct")
+        ),
+        config_sha256=provenance.config_sha256,
+        response_sha256="8" * 64,
+        response_hash_scope=GENERATOR_RESPONSE_HASH_SCOPE,
+        structured_output_sha256=_generator_json_sha(
+            artifact.review.model_dump(mode="json")
+        ),
+        structured_output_hash_scope=GENERATOR_OUTPUT_HASH_SCOPE,
+        temperature=provenance.temperature,
+        attempt_count=attempt_count,
+        reasoning_effort=GENERATOR_REASONING_EFFORT,
+        max_tokens=4096,
+        parse_source="tool_call",
+    )
+    formal_artifact = artifact.model_copy(
+        update={
+            "schema_version": schema_version,
+            "generator_provenance": provenance,
+            "model_calls": [call],
+        }
+    )
+    formal_state = state.model_copy(
+        update={
+            "schema_version": schema_version,
+            "generator_provenance": provenance,
+        }
+    )
+    artifacts = {("q1", 1, PilotArm.A): formal_artifact}
+    return formal_state, artifacts, formal_artifact
 
 
 def _write_state(suite: Path, payload: dict) -> None:
@@ -570,6 +673,175 @@ def test_formal_status_is_schema_frozen_and_audit_reports_runtime_constant(
     result = audit_pilot_ablation_artifacts(suite)
     assert result["formal_status"] == "pilot_ablation_generation_unscored"
     assert result["formal_status_source"] == "runtime_constant_by_input_schema"
+
+
+def test_v4_success_and_failure_manifest_models_are_versioned_and_fail_closed():
+    files = {
+        name: {"bytes": 0, "sha256": ZERO_HASH}
+        for name in {
+            "artifact.json",
+            "review.json",
+            "retrieval.jsonl",
+            "claim_gates.jsonl",
+        }
+    }
+    manifest = CellManifest.model_validate(
+        {
+            "schema_version": ABLATION_ARTIFACT_VERSION,
+            "question_id": "q1",
+            "replicate": 1,
+            "arm": "A",
+            "formal_status": "pilot_ablation_generation_unscored",
+            "files": files,
+            "security": {
+                "contains_api_key": False,
+                "contains_reasoning_content": False,
+            },
+        }
+    )
+    assert manifest.schema_version == ABLATION_ARTIFACT_VERSION
+
+    failure_payload = {
+        "schema_version": ABLATION_ARTIFACT_VERSION,
+        "question_id": "q1",
+        "replicate": 1,
+        "arm": "A",
+        "outcome": "failed",
+        "failure_type": "RuntimeError",
+        "failure_reason": "bounded generation exhausted",
+        "security": {
+            "contains_api_key": False,
+            "contains_reasoning_content": False,
+            "failure_text_sanitized": True,
+            "redaction_policy": "mitoevidence.failure-redaction.v1",
+        },
+    }
+    assert (
+        FailureArtifact.model_validate(failure_payload).schema_version
+        == ABLATION_ARTIFACT_VERSION
+    )
+    failure_payload["security"]["contains_reasoning_content"] = None
+    with pytest.raises(ValueError, match="reasoning_content"):
+        FailureArtifact.model_validate(failure_payload)
+
+
+def test_v4_generator_repaired_success_is_bounded_and_reported_by_arm(
+    tmp_path: Path,
+):
+    state, artifacts, _artifact = _formal_generator_fixture(
+        tmp_path,
+        schema_version=ABLATION_ARTIFACT_VERSION,
+        attempt_count=2,
+        successful_prompt_sha256="f" * 64,
+    )
+    checks, _identity, _nonformal = _generator_identity_checks(
+        state,
+        artifacts,
+        allow_test_fixture=False,
+    )
+    binding = next(
+        row
+        for row in checks
+        if row["check"] == "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING"
+    )
+    assert binding["ok"] is True
+    assert binding["contract_schema"] == ABLATION_ARTIFACT_VERSION
+    assert binding["calls"][0]["one_shot"] is False
+    assert binding["calls"][0]["repaired"] is True
+    assert binding["calls"][0]["successful_prompt_matches_base_no_repair"] is None
+    assert binding["calls"][0]["successful_repair_prompt_hash_shape_valid"] is True
+    assert binding["calls"][0]["repair_trace_offline_reconstructable"] is False
+    identity = next(
+        row
+        for row in checks
+        if row["check"] == "GENERATOR_IDENTITY_CONSISTENT_ACROSS_A_B_C"
+    )
+    assert identity["production_provider"] is True
+    assert identity["formal_hy3_identity_allowlist_applicable"] is True
+
+    statistics = _generator_attempt_statistics(artifacts)
+    assert statistics["by_arm"]["A"] == {
+        "call_observations": 1,
+        "one_shot": 0,
+        "repaired": 1,
+        "attempt_count": {"2": 1},
+        "unique_calls": 1,
+        "unique_one_shot": 0,
+        "unique_repaired": 1,
+        "unique_attempt_count": {"2": 1},
+    }
+    assert statistics["by_arm"]["D"]["call_observations"] == 0
+    assert statistics["repair_trace_offline_reconstructable"] is False
+
+
+@pytest.mark.parametrize(
+    ("attempt_count", "prompt_sha256"),
+    [
+        (5, "f" * 64),
+        (2, "not-a-sha256"),
+    ],
+)
+def test_v4_generator_repair_tampering_fails_closed(
+    tmp_path: Path,
+    attempt_count: int,
+    prompt_sha256: str,
+):
+    state, artifacts, _artifact = _formal_generator_fixture(
+        tmp_path,
+        schema_version=ABLATION_ARTIFACT_VERSION,
+        attempt_count=attempt_count,
+        successful_prompt_sha256=prompt_sha256,
+    )
+    checks, _identity, _nonformal = _generator_identity_checks(
+        state,
+        artifacts,
+        allow_test_fixture=False,
+    )
+    binding = next(
+        row
+        for row in checks
+        if row["check"] == "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING"
+    )
+    assert binding["ok"] is False
+    assert binding["calls"][0]["ok"] is False
+
+
+def test_v3_generator_keeps_one_shot_exact_base_prompt_semantics(tmp_path: Path):
+    state, artifacts, _artifact = _formal_generator_fixture(
+        tmp_path,
+        schema_version=ABLATION_ARTIFACT_VERSION_V3,
+        attempt_count=1,
+    )
+    checks, _identity, _nonformal = _generator_identity_checks(
+        state,
+        artifacts,
+        allow_test_fixture=False,
+    )
+    binding = next(
+        row
+        for row in checks
+        if row["check"] == "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING"
+    )
+    assert binding["ok"] is True
+    assert binding["calls"][0]["successful_prompt_matches_base_no_repair"] is True
+
+    repaired_state, repaired_artifacts, _ = _formal_generator_fixture(
+        tmp_path / "repaired",
+        schema_version=ABLATION_ARTIFACT_VERSION_V3,
+        attempt_count=2,
+        successful_prompt_sha256="f" * 64,
+    )
+    repaired_checks, _identity, _nonformal = _generator_identity_checks(
+        repaired_state,
+        repaired_artifacts,
+        allow_test_fixture=False,
+    )
+    repaired_binding = next(
+        row
+        for row in repaired_checks
+        if row["check"] == "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING"
+    )
+    assert repaired_binding["ok"] is False
 
 
 @pytest.mark.parametrize(
@@ -967,7 +1239,7 @@ def test_artifact_audit_cli_writes_report_and_returns_two_on_failure(tmp_path: P
     )
     assert completed.returncode == 2
     report = json.loads(output.read_text(encoding="utf-8"))
-    assert report["schema_version"] == "mitoevidence.pilot-ablation-artifact-audit.v3"
+    assert report["schema_version"] == ARTIFACT_AUDIT_SCHEMA_VERSION
     assert report["audit_kind"] == "artifact_level_filesystem_and_cross_arm"
     assert report["ok"] is False
 
