@@ -15,7 +15,7 @@
 | 真实 Claim 实验 | 50/50 成功；四分类准确率 0.32、κ=0.0357，暴露自动准入能力不足 | `app/claim_admission_pilot.py`、结果报告 |
 | A/B/C/D | A 无检索、B 稀疏 TF-IDF、C 冻结证据图、D 同一 C 草稿的 Judge 门控；v3 固定完整执行身份、seed、缓存命名空间与跨组绑定 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
 | 安全与可追溯 | 成功/失败产物独立敏感信息扫描，顶层与 cell 快照审计，路径/软链接逃逸防护，旧格式显式降级 | `evaluator/artifact_security.py`、`evaluator/pilot_identity.py` |
-| 工程回归 | Python 3.11 下 561 项离线测试通过 | `tests/` |
+| 工程回归 | Python 3.11 下 564 项离线测试通过 | `tests/` |
 
 完整指标、哈希和解释边界见
 [`experiment_results_20260831.md`](experiment_results_20260831.md)。

@@ -65,6 +65,7 @@ from evaluator.experiment_protocol import (
     build_ablation_answerability_concordance,
 )
 from evaluator.ablation_artifacts import audit_pilot_ablation_artifacts
+from evaluator.artifact_security import ArtifactSecurityError, assert_json_safe
 from evaluator.schemas import (
     Answerability,
     AtomicClaim,
@@ -497,6 +498,71 @@ def _input_file(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def test_suite_state_accepts_a_long_repo_relative_input_path(tmp_path: Path):
+    root = _fixture_repo(tmp_path)
+    input_path = (
+        root
+        / "annotation_prelabel"
+        / "pilot_questions"
+        / "pilot_5_questions.jsonl"
+    )
+    input_path.parent.mkdir(parents=True, exist_ok=True)
+    input_path.write_text(
+        json.dumps(
+            {
+                "question_id": "Q1",
+                "question": "How does mitochondrial calcium help?",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    runner = PilotAblationRunner(
+        model=_Model(),
+        corpus=FrozenReviewCorpus(root),
+        claim_gate=_Gate(),
+        top_k=2,
+    )
+
+    _, state = runner.run_suite(
+        [
+            ReviewRequest(
+                question_id="Q1",
+                question="How does mitochondrial calcium help?",
+            )
+        ],
+        replicates=1,
+        out_root=tmp_path / "results",
+        suite_id="long-input-path-v3",
+        input_path=input_path,
+    )
+
+    assert state.input_snapshot.path == (
+        "annotation_prelabel/pilot_questions/pilot_5_questions.jsonl"
+    )
+
+
+def test_path_field_still_rejects_a_single_opaque_credential_segment():
+    payload = {
+        "path": (
+            "annotation_prelabel/"
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            "/pilot.jsonl"
+        )
+    }
+
+    with pytest.raises(ArtifactSecurityError, match="credential-like text"):
+        assert_json_safe(payload)
+
+
+def test_path_field_still_rejects_a_known_api_key(monkeypatch: pytest.MonkeyPatch):
+    secret = "hy3-test-credential-material-that-must-never-be-persisted"
+    monkeypatch.setenv("HY3_API_KEY", secret)
+
+    with pytest.raises(ArtifactSecurityError, match="credential-like text"):
+        assert_json_safe({"path": f"annotation_prelabel/{secret}/pilot.jsonl"})
 
 
 def test_suite_runs_all_four_arms_with_fixed_plan_and_exact_c_parent(tmp_path: Path):

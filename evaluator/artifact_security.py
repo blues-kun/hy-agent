@@ -34,6 +34,7 @@ _JSON_REASONING_RE = re.compile(
 )
 _PLAIN_REASONING_RE = re.compile(r"(?is)\breasoning_content\s*[:=]\s*[^\r\n]*")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_PATH_SEPARATOR_RE = re.compile(r"([/\\])")
 _TRAILING_URL_PUNCTUATION = ".,;:!)]}"
 
 
@@ -126,6 +127,39 @@ def _redact_reasoning_text(value: str) -> str:
     )
 
 
+def _sanitize_path_text(
+    value: str,
+    *,
+    extra_secrets: Sequence[str] = (),
+) -> str:
+    """Preserve ordinary multi-level paths while checking every path segment.
+
+    The generic opaque-token expression intentionally accepts ``/`` because
+    credentials may be base64-like.  Applying it to an entire repository path
+    therefore turns a harmless long relative path into a false positive.  We
+    first apply the credential-aware checks to the complete value, then apply
+    the opaque-token heuristic independently to each non-separator segment.
+    A single credential-shaped filename or directory is still rejected.
+    """
+
+    redacted = redact_sensitive_text(
+        _redact_reasoning_text(value),
+        extra_secrets=extra_secrets,
+        redact_long_tokens=False,
+    )
+    parts = _PATH_SEPARATOR_RE.split(redacted)
+    return "".join(
+        part
+        if part in {"/", "\\"}
+        else redact_sensitive_text(
+            part,
+            extra_secrets=extra_secrets,
+            redact_long_tokens=True,
+        )
+        for part in parts
+    )
+
+
 def sanitize_json_value(
     value: Any,
     *,
@@ -161,6 +195,16 @@ def sanitize_json_value(
         if field_name and field_name.lower() == "reasoning_content":
             return REDACTED_MODEL_REASONING
         preserve_hash = bool(field_name and field_name.lower().endswith("sha256"))
+        path_field = bool(
+            field_name
+            and (
+                field_name == "path"
+                or field_name.endswith("_path")
+                or field_name == "cell_dir"
+            )
+        )
+        if path_field:
+            return _sanitize_path_text(value, extra_secrets=extra_secrets)
         # These schema-controlled values are long by design and cannot carry
         # an opaque token without first changing a separately validated
         # contract/path field. Known secrets, headers and URL credentials are
@@ -192,9 +236,7 @@ def sanitize_json_value(
             and (
                 field_name in schema_long_fields
                 or field_name == "blind_input_sha256_by_review_id"
-                or field_name.endswith("_path")
                 or field_name.endswith("_hash_scope")
-                or field_name == "cell_dir"
             )
         )
         return redact_sensitive_text(

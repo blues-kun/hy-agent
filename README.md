@@ -6,7 +6,7 @@
 
 ![Model](https://img.shields.io/badge/MODEL-Hy3-111111?style=flat-square)
 ![Version](https://img.shields.io/badge/MVP-v0.3.1-555555?style=flat-square)
-![Tests](https://img.shields.io/badge/TESTS-561%20PASSING-111111?style=flat-square)
+![Tests](https://img.shields.io/badge/TESTS-564%20PASSING-111111?style=flat-square)
 ![Gold](https://img.shields.io/badge/EXPERT%20GOLD-127-555555?style=flat-square)
 [![Mito Agent](https://img.shields.io/badge/MITO--AGENT-DEPLOYED-111111?style=flat-square)](https://agent.blueskun.com:8444/)
 
@@ -52,7 +52,7 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 | 真实有效性 Pilot | 术语正误对 180/180 次、Claim 准入 50/50 次真实 Hy3 调用完成 | `app/terminology_pair_pilot.py`、`app/claim_admission_pilot.py` |
 | A/B/C/D 消融 | v3 固定生成/Judge身份、seed、缓存命名空间、顶层快照、跨组绑定与敏感信息审计 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
 | 实验协议 | 系统—专家参考一致度、判别力、稳定性、对抗性与消融审计入口已实现 | `evaluator/experiment_protocol.py` |
-| 工程验证 | Python 3.11 下 561 项离线测试通过 | `tests/` |
+| 工程验证 | Python 3.11 下 564 项离线测试通过 | `tests/` |
 
 127 条金标来自四类任务，不能当作 127 个同构评分样本混算：
 
