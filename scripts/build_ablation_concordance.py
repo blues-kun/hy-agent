@@ -39,10 +39,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--suite-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--allow-nonformal",
+        action="store_true",
+        help=(
+            "显式允许 fixture/legacy/未完成 suite 的诊断性配对；输出不会标为正式 Hy3 concordance"
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         result = build_ablation_answerability_concordance(
-            REPO_ROOT, args.suite_dir
+            REPO_ROOT,
+            args.suite_dir,
+            allow_nonformal=args.allow_nonformal,
         )
     except ValueError as exc:
         raise SystemExit(f"无法构造 A/B/C/D 专家 concordance：{exc}") from exc
@@ -56,6 +65,8 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(result.nominal)}，失败/缺失 {missing}"
     )
     print("该结果只验证 Pilot answerability，不替代 60 份九维专家评分一致性实验。")
+    if args.allow_nonformal:
+        print("警告：--allow-nonformal 已启用；该输出仅供诊断，不是 production concordance。")
     return 0
 
 

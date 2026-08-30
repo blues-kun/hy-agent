@@ -113,8 +113,12 @@ class GeneratedReview(StrictModel):
     def _answer_not_blank(self) -> "GeneratedReview":
         if not self.answer.strip():
             raise ValueError("GeneratedReview.answer 不能为空")
-        if self.answerability in (Answerability.INSUFFICIENT, Answerability.OUT_OF_SCOPE):
-            # 拒答可以没有科学主张；若给出主张，仍会在流水线里强制检查证据引用。
+        if self.answerability is Answerability.OUT_OF_SCOPE:
+            if self.claims:
+                raise ValueError("out_of_scope 拒答的 claims 必须为空")
+            return self
+        if self.answerability is Answerability.INSUFFICIENT:
+            # 证据不足可以保留待核验主张；流水线仍会强制检查证据引用。
             return self
         if not self.claims:
             raise ValueError("answerable/partial 输出至少需要一个原子主张")
@@ -126,11 +130,21 @@ class ModelCallAudit(StrictModel):
     provider: str = ""
     model: str = ""
     endpoint_origin: str = ""
+    endpoint_url: str = ""
     prompt_sha256: str = ""
+    base_prompt_sha256: str = ""
+    base_prompt_hash_scope: str = ""
+    prompt_hash_scope: str = ""
     schema_sha256: str = ""
     config_sha256: str = ""
     response_sha256: str = ""
+    response_hash_scope: str = ""
+    structured_output_sha256: str = ""
+    structured_output_hash_scope: str = ""
     temperature: float | None = None
+    requested_seed: int | None = None
+    cache_namespace: str = ""
+    attempt_count: int = 0
     reasoning_effort: str = ""
     max_tokens: int = 0
     prompt_tokens: int = 0

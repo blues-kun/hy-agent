@@ -13,9 +13,11 @@ Two distinctions are enforced in the schema:
   and replicate has either a success record or an explicit failure record.
 
 The latter prevents API/schema failures from disappearing from the
-denominator.  The current repository does not yet implement the four formal
-ablation arms; the preflight report says so instead of relabelling the lexical
-retrieval prototype as vector RAG or a claim-graph system.
+denominator.  The repository implements a bounded Pilot A/B/C/D runtime with
+explicitly named sparse TF-IDF and frozen-corpus graph arms; the preflight
+report does not relabel either one as dense RAG or an expert-curated claim
+graph.  Formal scoring and inferential statistics remain separate downstream
+work.
 """
 from __future__ import annotations
 
@@ -45,6 +47,11 @@ from evaluator.validation import (
 SCHEMA_VERSION = "mitoevidence.experiment-preflight.v1"
 EXPERT_CONCORDANCE_SCHEMA_VERSION = "mitoevidence.expert-concordance.v1"
 ABLATION_SCHEMA_VERSION = "mitoevidence.ablation.v1"
+ABLATION_RUNTIME_SCHEMA_VERSIONS = (
+    "mitoevidence.pilot-ablation.v1",
+    "mitoevidence.pilot-ablation.v2",
+    "mitoevidence.pilot-ablation.v3",
+)
 
 FORMAL_DISCRIMINATION_PER_TIER = 20
 FORMAL_EXPERT_OUTPUTS = 60
@@ -590,6 +597,8 @@ def build_pilot_answerability_concordance(
 def build_ablation_answerability_concordance(
     repo_root: str | Path,
     suite_dir: str | Path,
+    *,
+    allow_nonformal: bool = False,
 ) -> ExpertConcordanceInput:
     """Bind every A/B/C/D cell to the pinned expert answerability label.
 
@@ -599,11 +608,14 @@ def build_ablation_answerability_concordance(
     """
 
     from app.ablation import (
+        SUITE_EVIDENCE_MANIFEST_COPY,
+        SUITE_INPUT_SNAPSHOT_COPY,
         AblationCellArtifact,
         CellOutcome,
         PilotAblationSuiteState,
         SuiteStatus,
     )
+    from evaluator.ablation_artifacts import audit_pilot_ablation_artifacts
     from evaluator.expert_gold import (
         ExpertGoldAuditError,
         audit_expert_gold,
@@ -613,15 +625,115 @@ def build_ablation_answerability_concordance(
     root = Path(repo_root).resolve()
     suite = Path(suite_dir)
     suite = suite.resolve() if suite.is_absolute() else (root / suite).resolve()
+    if not suite.is_dir():
+        raise ValueError(f"A/B/C/D suite 目录不存在：{suite}")
+    state_path = suite / "suite_state.json"
     summary_path = suite / "suite_summary.json"
+    for journal_path in (state_path, summary_path):
+        if journal_path.is_symlink() or not journal_path.is_file():
+            raise ValueError(f"{journal_path.name} 缺失或为不允许的 symlink")
     try:
+        state_bytes = state_path.read_bytes()
+        summary_bytes = summary_path.read_bytes()
+        if state_bytes != summary_bytes:
+            raise ValueError("suite_state.json 与 suite_summary.json 必须逐字节一致")
         state = PilotAblationSuiteState.model_validate_json(
-            summary_path.read_text(encoding="utf-8")
+            summary_bytes
         )
     except (OSError, ValueError) as exc:
         raise ValueError(f"A/B/C/D suite_summary 不合规：{exc}") from exc
-    if state.status is not SuiteStatus.COMPLETED:
+    if state.status is not SuiteStatus.COMPLETED and not allow_nonformal:
         raise ValueError("只有 completed A/B/C/D suite 可以构造专家 concordance")
+
+    def bound_snapshot(
+        declared_path: str,
+        archived_name: str,
+        expected_sha256: str,
+        label: str,
+    ) -> Path:
+        raw = Path(declared_path)
+        if not raw.is_absolute() and ".." in raw.parts:
+            raise ValueError(f"{label} 声明路径包含越界段：{declared_path!r}")
+        candidates = [suite / archived_name]
+        if raw.is_absolute():
+            candidates.append(raw)
+        else:
+            candidates.extend((suite / raw, root / raw))
+        seen: set[Path] = set()
+        for candidate in candidates:
+            try:
+                resolved = candidate.resolve()
+            except OSError as exc:
+                raise ValueError(f"无法解析 {label}：{exc}") from exc
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            if not candidate.exists():
+                continue
+            allowed = False
+            for boundary in (suite, root):
+                try:
+                    resolved.relative_to(boundary)
+                    allowed = True
+                    break
+                except ValueError:
+                    continue
+            if not allowed:
+                raise ValueError(f"{label} 越出 repo/suite：{candidate}")
+            if candidate.is_symlink() or not resolved.is_file():
+                raise ValueError(f"{label} 必须是非 symlink 常规文件：{candidate}")
+            actual = _sha256(resolved)
+            if actual != expected_sha256:
+                raise ValueError(
+                    f"{label} SHA-256 与 suite 声明不一致：{actual} != {expected_sha256}"
+                )
+            return resolved
+        raise ValueError(f"找不到 suite 绑定的 {label}：{declared_path!r}")
+
+    input_snapshot_path = bound_snapshot(
+        state.input_snapshot.path,
+        SUITE_INPUT_SNAPSHOT_COPY,
+        state.input_snapshot.sha256,
+        "input snapshot",
+    )
+    evidence_manifest_path = bound_snapshot(
+        state.evidence_manifest_path,
+        SUITE_EVIDENCE_MANIFEST_COPY,
+        state.evidence_manifest_sha256,
+        "evidence manifest",
+    )
+    try:
+        evidence_payload = json.loads(evidence_manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"suite 绑定的 evidence manifest 不是有效 JSON：{exc}") from exc
+    if not isinstance(evidence_payload, dict):
+        raise ValueError("suite 绑定的 evidence manifest 顶层必须是 object")
+
+    input_rows: dict[str, dict[str, Any]] = {}
+    try:
+        input_lines = input_snapshot_path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ValueError(f"无法读取 suite input snapshot：{exc}") from exc
+    for line_number, line in enumerate(input_lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"input snapshot 第 {line_number} 行 JSON 无效：{exc}") from exc
+        if not isinstance(row, dict) or not row.get("question_id"):
+            raise ValueError(f"input snapshot 第 {line_number} 行缺 question_id object")
+        question_id = str(row["question_id"])
+        if question_id in input_rows:
+            raise ValueError(f"input snapshot question_id 重复：{question_id}")
+        input_rows[question_id] = row
+    missing_input_ids = [
+        question_id
+        for question_id in state.input_snapshot.question_ids
+        if question_id not in input_rows
+    ]
+    if missing_input_ids:
+        raise ValueError(f"input snapshot 缺少 suite question_id：{missing_input_ids}")
 
     manifest_path = root / "annotation_prelabel/expert_gold_manifest.json"
     try:
@@ -639,6 +751,76 @@ def build_ablation_answerability_concordance(
     )
     if unknown_questions:
         raise ValueError(f"A/B/C/D suite 含非金标 Pilot ID：{unknown_questions}")
+    if not allow_nonformal:
+        pilot_dataset = gold_audit.get("datasets", {}).get("pilot_questions", {})
+        pinned_pilot_sha256 = pilot_dataset.get("sha256")
+        if state.input_snapshot.sha256 != pinned_pilot_sha256:
+            raise ValueError(
+                "正式 concordance 要求 input snapshot 精确绑定 expert manifest 的 "
+                "pilot_questions dataset hash"
+            )
+        neutral_mismatches = [
+            question_id
+            for question_id in state.input_snapshot.question_ids
+            if (
+                str(input_rows[question_id].get("question") or "")
+                != str(expert_by_id[question_id].get("question") or "")
+                or str(input_rows[question_id].get("scope") or "")
+                != str(expert_by_id[question_id].get("scope") or "")
+            )
+        ]
+        if neutral_mismatches:
+            raise ValueError(
+                "正式 concordance 的 neutral question/scope 与专家 manifest 数据集不一致："
+                f"{neutral_mismatches}"
+            )
+        evidence_relative = Path(state.evidence_manifest_path)
+        if evidence_relative.is_absolute() or ".." in evidence_relative.parts:
+            raise ValueError("正式 concordance 的 evidence manifest 必须是 repo 内相对路径")
+        canonical_evidence = (root / evidence_relative).resolve()
+        try:
+            canonical_evidence.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("正式 concordance 的 evidence manifest 越出 repo") from exc
+        if canonical_evidence.is_symlink() or not canonical_evidence.is_file():
+            raise ValueError("正式 concordance 找不到非 symlink evidence manifest")
+        if _sha256(canonical_evidence) != state.evidence_manifest_sha256:
+            raise ValueError(
+                "正式 concordance 的 evidence manifest hash 与当前 repo 冻结快照不一致"
+            )
+
+    artifact_audit = audit_pilot_ablation_artifacts(
+        suite,
+        allow_test_fixture=allow_nonformal,
+    )
+    if not allow_nonformal and artifact_audit.get("production_ready") is not True:
+        first_errors = artifact_audit.get("errors") or []
+        detail = "；".join(
+            f"{error.get('code')}: {error.get('detail')}"
+            for error in first_errors[:3]
+        )
+        raise ValueError(
+            "正式 concordance 要求 artifact-level production audit 通过"
+            + (f"：{detail}" if detail else "")
+        )
+    if allow_nonformal:
+        legacy_waivers = {
+            "D_JUDGE_PROVENANCE_UNAVAILABLE_LEGACY_V1",
+        }
+        nonformal_fatal = [
+            error
+            for error in artifact_audit.get("errors") or []
+            if not (
+                state.schema_version == "mitoevidence.pilot-ablation.v1"
+                and error.get("code") in legacy_waivers
+            )
+        ]
+        if nonformal_fatal:
+            detail = "；".join(
+                f"{error.get('code')}: {error.get('detail')}"
+                for error in nonformal_fatal[:3]
+            )
+            raise ValueError(f"非正式 concordance 的 artifact audit 仍失败：{detail}")
 
     rows: list[ExpertNominalComparison] = []
     for record in state.records:
@@ -679,6 +861,12 @@ def build_ablation_answerability_concordance(
                         or artifact.arm is not record.arm
                     ):
                         raise ValueError("artifact grid key 与 suite record 不一致")
+                    source_row = input_rows[record.question_id]
+                    if (
+                        artifact.request.question != str(source_row.get("question") or "")
+                        or artifact.request.scope != str(source_row.get("scope") or "")
+                    ):
+                        raise ValueError("artifact request 与绑定 input snapshot 不一致")
                     automatic_label = artifact.review.answerability.value
                 except (OSError, json.JSONDecodeError, ValueError) as exc:
                     automatic_error = f"成功 cell 的审计产物无效：{exc}"
@@ -701,7 +889,11 @@ def build_ablation_answerability_concordance(
         reference_authority=str(gold_audit["designation"]),
         reference_manifest_sha256=_sha256(manifest_path),
         rubric_config_sha256=_sha256(rubric_path),
-        automatic_system_role="hy3_pilot_ablation_answerability",
+        automatic_system_role=(
+            "nonformal_hy3_pilot_ablation_answerability"
+            if allow_nonformal
+            else "hy3_pilot_ablation_answerability"
+        ),
         automatic_artifact_sha256=_sha256(summary_path),
         nominal=rows,
     )
@@ -900,6 +1092,51 @@ def _load_optional_model(path: Path | None, model_cls: type[StrictModel]) -> tup
         return model_cls.model_validate(payload), None
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         return None, f"输入不合规：{exc}"
+
+
+def _load_optional_ablation_input(
+    path: Path | None,
+) -> tuple[Any, str | None, str | None]:
+    """Load one complete ablation schema without projecting unknown fields."""
+
+    if path is None or not path.is_file():
+        return (
+            None,
+            None,
+            "未提供输入文件" if path is None else f"输入文件不存在：{path.name}",
+        )
+    try:
+        from app.ablation import PilotAblationSuiteState
+
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("A/B/C/D 输入顶层必须是 JSON object")
+        declared = payload.get("schema_version")
+        if declared is not None and not isinstance(declared, str):
+            raise ValueError("schema_version 必须是字符串")
+        if declared in ABLATION_RUNTIME_SCHEMA_VERSIONS:
+            return PilotAblationSuiteState.model_validate(payload), declared, None
+        if declared == ABLATION_SCHEMA_VERSION:
+            return AblationInput.model_validate(payload), declared, None
+        if declared is not None:
+            raise ValueError(f"不支持的 ablation schema_version：{declared!r}")
+
+        has_legacy_identity = "protocol_id" in payload
+        has_runtime_identity = "suite_id" in payload
+        if has_legacy_identity and has_runtime_identity:
+            raise ValueError("缺少 schema_version 且 protocol_id/suite_id 混合")
+        if has_runtime_identity:
+            raise ValueError("PilotAblationSuiteState 必须显式声明 schema_version")
+        if not has_legacy_identity:
+            raise ValueError("无法明确判别 ablation 输入 Schema")
+        # Only the historical formal-analysis payload may omit the version.
+        return (
+            AblationInput.model_validate(payload),
+            ABLATION_SCHEMA_VERSION,
+            None,
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        return None, None, f"输入不合规：{exc}"
 
 
 def _corpus_check(repo_root: Path) -> PreflightCheck:
@@ -1143,7 +1380,23 @@ def build_experiment_preflight(
         for row in validation.discrimination:
             if row.score is not None:
                 tier_counts[row.quality_tier.value] += 1
-    discrimination_checks = [base_validation_check]
+    terminology_pair_runtime = (
+        (root / "app/terminology_pair_pilot.py").is_file()
+        and (root / "scripts/run_terminology_pair_pilot.py").is_file()
+        and (root / "scripts/analyze_terminology_pair_pilot.py").is_file()
+    )
+    terminology_pair_check = _check(
+        "TERMINOLOGY_PAIR_PILOT_RUNTIME",
+        terminology_pair_runtime,
+        (
+            "已实现盲法 wrong/correct 术语/条件错误二元成对 Pilot；"
+            "模型只见左右文本，失败保留且支持严格 resume"
+            if terminology_pair_runtime
+            else "术语/条件错误二元成对 Pilot runtime 不完整"
+        ),
+        required=False,
+    )
+    discrimination_checks = [base_validation_check, terminology_pair_check]
     if validation is not None:
         discrimination_checks.append(
             _check(
@@ -1162,7 +1415,10 @@ def build_experiment_preflight(
                 if validation_path is not None
                 else None
             ),
-            limitations=["统计脚本分析已落盘分数；仓库当前没有生成好/中/差受控输出的实现。"],
+            limitations=[
+                "现有术语 Pilot 只有 wrong/correct 两档，不能替代正式好/中/差三档判别力设计。",
+                "wrong/correct 文本存在很强的长度线索；分析必须同时报告 length-only baseline。",
+            ],
         )
     )
 
@@ -1196,7 +1452,10 @@ def build_experiment_preflight(
         )
     )
 
-    adversarial_checks = [base_validation_check.model_copy(deep=True)]
+    adversarial_checks = [
+        base_validation_check.model_copy(deep=True),
+        terminology_pair_check.model_copy(deep=True),
+    ]
     if validation is not None:
         complete_pairs = sum(
             row.clean_score is not None
@@ -1229,12 +1488,18 @@ def build_experiment_preflight(
                 if validation_path is not None
                 else None
             ),
-            limitations=["仓库当前没有构造 12 类单因素攻击和 60 份独立干净负样本的生成器。"],
+            limitations=[
+                "现有 runner 是术语、因果强度与条件错误的成对 Pilot，不是全文 Claim-Evidence 一致性。",
+                "它不覆盖正式 12 类单因素攻击、严重度金标或 60 份独立干净负样本。",
+                "TERM-060 在该单轮 pair task 中只能测安全措辞识别，不能测多轮坚持行为。",
+            ],
         )
     )
 
     ablation_path = _input_path(root, ablation_input)
-    ablation, ablation_error = _load_optional_model(ablation_path, AblationInput)
+    ablation, ablation_schema, ablation_error = _load_optional_ablation_input(
+        ablation_path
+    )
     ablation_runtime = (root / "app/ablation.py").is_file() and (
         root / "scripts/run_pilot_ablation.py"
     ).is_file()
@@ -1268,18 +1533,26 @@ def build_experiment_preflight(
         _check(
             "ABLATION_GRID_INPUT",
             ablation is not None,
-            ablation_error or "A/B/C/D 运行记录通过严格 Schema",
+            ablation_error
+            or f"A/B/C/D 运行记录通过严格 Schema：{ablation_schema}",
             required=False,
         ),
     ]
     if ablation is not None:
-        grid = ablation_grid_audit(ablation)
+        if ablation_schema in ABLATION_RUNTIME_SCHEMA_VERSIONS:
+            from app.ablation import audit_pilot_ablation_grid
+
+            grid = audit_pilot_ablation_grid(ablation)
+            grid_complete = bool(grid["runtime_complete"])
+        else:
+            grid = ablation_grid_audit(ablation)
+            grid_complete = bool(grid["grid_complete"])
         arm_checks.append(
             _check(
                 "ABLATION_GRID_COMPLETE",
-                bool(grid["grid_complete"]),
+                grid_complete,
                 f"运行网格 {grid['recorded_grid_cells']}/{grid['expected_grid_cells']}，"
-                f"缺失 {grid['missing_grid_cells']}",
+                f"缺失 {grid['missing_grid_cells']}；input_schema={ablation_schema}",
                 required=False,
             )
         )

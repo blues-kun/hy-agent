@@ -36,15 +36,18 @@
 | 专家共识金标审计：127条原始快照、逐文件哈希、字段designation与完整性边界 | `evaluator/expert_gold.py` |
 | 有效性统计：判别力、一致性、稳定性与对抗鲁棒性 | `evaluator/validation.py` |
 | Pilot A/B/C/D：无检索、稀疏TF-IDF、冻结证据图、Hy3 Judge门控 | `app/ablation.py` |
+| Claim 准入四分类 Pilot：盲输入、严格断点恢复、系统—专家参考指标 | `app/claim_admission_pilot.py` |
+| 术语/条件错误成对 Pilot：哈希固定左右顺序、重复稳定性与偏差基线 | `app/terminology_pair_pilot.py` |
+| 实验产物安全与正式身份门禁：快照、端点、seed、跨组和敏感信息审计 | `evaluator/ablation_artifacts.py`、`evaluator/pilot_identity.py` |
 | D8 术语初筛：本地版本化三态词表与外部/人工复核队列 | `evaluator/rules/terminology_check.py` |
 | 量表文档（含 15 条待澄清项） | `eval/rubric.md` |
 | 引用核验 CLI（可真实联网） | `scripts/verify_citations.py` |
 | Judge CLI（逐主张判定 + 升级队列 + 成本汇总） | `scripts/run_judge.py` |
 | 金标语料校验 CLI | `scripts/validate_gold.py` |
 | 金标证据池构建 CLI（12 篇综述引文合并去重 + OA 全文下载） | `scripts/build_gold_pool.py` |
-| 424 项离线测试 | `tests/` |
+| 561 项离线测试 | `tests/` |
 
-**当前边界：** 项目负责人确认现有127条记录即本项目唯一专家共识金标；原始文件仍保留历史字段，designation manifest负责解释，不改写来源快照。真实Hy3五题已运行，但样本量仅5；专家间一致性不可计算，只能报告自动系统与单份专家参考的一致度。完整MeSH/GO对齐、扩展题集、量表冻结、正式多重复消融和2分钟Demo仍待完成。详见 [`docs/completion_status_20260830.md`](completion_status_20260830.md)。
+**当前边界：** 项目负责人确认现有127条记录即本项目唯一专家共识金标；原始文件仍保留历史字段，designation manifest负责解释，不改写来源快照。真实Hy3五题、180次术语判别和50次Claim准入已经运行；专家间一致性不可计算，只能报告自动系统与单份专家参考的一致度。旧结果的逐cell证明范围、失败指标和待完成项见 [`experiment_results_20260831.md`](experiment_results_20260831.md)。
 
 ## 快速开始
 
@@ -54,7 +57,7 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock.txt
 
-# 2. 全量离线回归（424 项；不需要网络和 Key）
+# 2. 全量离线回归（561 项；不需要网络和 Key）
 .venv/bin/python -m pytest
 
 # 3. 首次克隆需按现有 manifest 获取并逐个核验 OA XML（联网；全文不进入 Git）
@@ -82,11 +85,24 @@ cp .env.example .env && $EDITOR .env
 set -a && source .env && set +a
 .venv/bin/python scripts/run_pilot_suite.py --suite-id pilot5-hy3-v1
 
-# 8. 真实 Pilot A/B/C/D（Pilot默认Judge k=1；正式自一致性使用k=7）
-.venv/bin/python scripts/run_pilot_ablation.py \
-  --suite-id pilot-abcd-hy3-v1 --replicates 1 --judge-k 1
+# 8. 真实 Claim 与术语/条件错误 Pilot
+.venv/bin/python scripts/run_claim_admission_pilot.py \
+  --suite-id claim-admission-hy3-v2 --limit 50 --repeats 1 --base-seed 20260831
+.venv/bin/python scripts/run_terminology_pair_pilot.py \
+  --suite-id terminology-pair-hy3-v2 --limit 60 --repeats 3 --base-seed 20260831
 
-# 9. 引用核验与逐主张 Hy3 Judge
+# 9. 可审计的真实 A/B/C/D v3：3次生成重复，Judge每条Claim采样7次
+SUITE_ID=pilot-abcd-hy3-v3-$(date -u +%Y%m%dT%H%M%SZ)
+.venv/bin/python scripts/run_pilot_ablation.py \
+  --suite-id "$SUITE_ID" --replicates 3 --top-k 12 \
+  --judge-k 7 --judge-temperature 0.7 \
+  --judge-base-seed 20260831 --generator-base-seed 20260831 \
+  --generator-cache-namespace "mitoevidence-$SUITE_ID"
+.venv/bin/python scripts/audit_pilot_ablation_artifacts.py \
+  --suite-dir "results/pilot_ablations/$SUITE_ID" \
+  --output "results/experiment_audits/$SUITE_ID.artifact_audit.json"
+
+# 10. 引用核验与逐主张 Hy3 Judge
 .venv/bin/python scripts/verify_citations.py \
   --doi 10.1038/s41746-025-02005-2 \
   --doi 10.2427/12267 \
@@ -95,7 +111,7 @@ set -a && source .env && set +a
 .venv/bin/python scripts/run_judge.py --input eval/data/claims.sample.jsonl \
   --out results/judge/aggregates.jsonl --escalations results/judge/escalations.jsonl
 
-# 10. 校验金标并分析有效性数据
+# 11. 校验金标并分析有效性数据
 .venv/bin/python scripts/validate_gold.py eval/data/questions.sample.jsonl
 .venv/bin/python scripts/analyze_validation.py --print-input-schema \
   --output results/validation_input_schema.json

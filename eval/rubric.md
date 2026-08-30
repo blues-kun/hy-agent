@@ -379,6 +379,7 @@ Judge 约束（方案 8.4）：看不到被测系统名称和实验组；只接�
   XML 安全解析、空白规范化、section/段落位置保留、exact 唯一命中与
   prefix/postfix/section 多命中消歧，返回 found/ambiguous/not_found 三态。
   可读段落位置只对冻结 XML 快照有意义，不声称字符 offset 在版本间稳定。
-- ~~**盲标与有效性统计入口**~~：`evaluator/blind.py` 能生成不含 AI 预标判断的中性包、
-  校验 A/B 锁定记录并生成空白裁决表；`evaluator/validation.py` 计算判别力、评审一致性、
-  稳定性和对抗指标。当前 A/B 文件仍为空，正式 κ、ICC、判别力和攻击检出率均尚无数据。
+- ~~**有效性统计入口**~~：`evaluator/validation.py` 与 `evaluator/experiment_protocol.py`
+  计算判别力、系统—专家参考一致度、稳定性和对抗指标；`evaluator/blind.py` 仅保留为历史可选工具。
+  当前 A/B 文件为空且已停用，因此专家间 κ/ICC 不可计算；真实术语正误对、Claim 准入与
+  Pilot answerability 只报告自动系统相对单份专家共识参考的指标，并明确各自适用范围。

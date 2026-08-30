@@ -6,7 +6,18 @@ env/
 # 密钥与本地配置：仓库只提交 .env.example
 .env
 .env.local
+.env.*
+!.env.example
+.envrc
 *.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+credentials.json
+secrets.yaml
+secrets.yml
 
 # Python
 __pycache__/
@@ -25,6 +36,8 @@ htmlcov/
 
 # 运行产物：评测结果与原始请求响应落盘（体量大且可重生成）
 results/
+!docs/results/
+!docs/results/**
 eval/results/
 !eval/data/.gitkeep
 

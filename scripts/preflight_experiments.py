@@ -65,6 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     from evaluator.experiment_protocol import (
+        ABLATION_RUNTIME_SCHEMA_VERSIONS,
+        ABLATION_SCHEMA_VERSION,
         AblationInput,
         DEFAULT_EXPERT_REFERENCE_PATHS,
         ExpertConcordanceInput,
@@ -72,13 +74,22 @@ def main(argv: list[str] | None = None) -> int:
         build_experiment_preflight,
     )
     from evaluator.validation import ValidationInput
+    from app.ablation import PilotAblationSuiteState
 
     args = build_parser().parse_args(argv)
     if args.print_input_schemas:
         result = {
             "expert_concordance": ExpertConcordanceInput.model_json_schema(),
             "validation": ValidationInput.model_json_schema(),
-            "ablation": AblationInput.model_json_schema(),
+            "ablation": {
+                "supported_input_schemas": {
+                    ABLATION_SCHEMA_VERSION: AblationInput.model_json_schema(),
+                    **{
+                        version: PilotAblationSuiteState.model_json_schema()
+                        for version in ABLATION_RUNTIME_SCHEMA_VERSIONS
+                    },
+                }
+            },
         }
         _write(args.output, json.dumps(result, ensure_ascii=False, indent=2))
         return 0

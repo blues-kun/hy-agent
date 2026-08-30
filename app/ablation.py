@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Literal, Protocol, Sequence
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import Field, model_validator
 
@@ -44,8 +45,20 @@ from app.schemas import (
     ReviewRequest,
     SearchPlan,
 )
-from evaluator.judge import Hy3Client, JudgeAggregate, run_self_consistency
+from evaluator.judge import (
+    Hy3Client,
+    JudgeAggregate,
+    JudgeSample,
+    aggregate_samples,
+    run_self_consistency,
+)
 from evaluator.judge.config import JudgeConfig
+from evaluator.judge.hy3_client import JUDGE_OUTPUT_SCHEMA
+from evaluator.judge.prompts import build_messages, system_prefix
+from evaluator.artifact_security import (
+    assert_json_safe,
+    sanitize_failure_text as sanitize_shared_failure_text,
+)
 from evaluator.schemas import (
     Answerability,
     AtomicClaim,
@@ -58,8 +71,117 @@ from evaluator.schemas import (
 )
 
 
-ABLATION_ARTIFACT_VERSION = "mitoevidence.pilot-ablation.v1"
+LEGACY_ABLATION_ARTIFACT_VERSION = "mitoevidence.pilot-ablation.v1"
+ABLATION_ARTIFACT_VERSION_V2 = "mitoevidence.pilot-ablation.v2"
+ABLATION_ARTIFACT_VERSION = "mitoevidence.pilot-ablation.v3"
+SUPPORTED_ABLATION_ARTIFACT_VERSIONS = (
+    LEGACY_ABLATION_ARTIFACT_VERSION,
+    ABLATION_ARTIFACT_VERSION_V2,
+    ABLATION_ARTIFACT_VERSION,
+)
+GENERATOR_SEED_POLICY = (
+    "sha256_v1(base_seed+nul+question_id+nul+replicate+nul+arm+nul+stage)_31bit"
+)
+GENERATOR_TEMPERATURE = 0.2
+JUDGE_SEED_POLICY = (
+    "sha256_v1(root_seed+nul+question_id+nul+replicate+nul+claim_id)_31bit;"
+    "sample_seed=derived_base_seed+sample_index"
+)
 SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]+")
+FAILURE_REDACTION_POLICY = "mitoevidence.failure-redaction.v1"
+ABLATION_FORMAL_STATUS = "pilot_ablation_generation_unscored"
+ABLATION_FORMAL_STATUS_BY_SCHEMA_VERSION = {
+    version: ABLATION_FORMAL_STATUS
+    for version in SUPPORTED_ABLATION_ARTIFACT_VERSIONS
+}
+SUITE_INPUT_SNAPSHOT_COPY = "pilot_input_snapshot.jsonl"
+SUITE_EVIDENCE_MANIFEST_COPY = "evidence_manifest_snapshot.json"
+MAX_FAILURE_TEXT_CHARS = 2000
+
+_BEARER_SECRET = re.compile(r"(?i)\bBearer\s+[^\s,;]+")
+_LABELED_SECRET = re.compile(
+    r'''(?ix)
+    (?P<prefix>["']?(?:api[_-]?key|x-api-key|authorization|access[_-]?token|
+    refresh[_-]?token|client[_-]?secret|secret|password)["']?\s*[:=]\s*)
+    (?:"(?P<double>[^"]*)"|'(?P<single>[^']*)'|(?P<bare>[^\s,;}]+))
+    '''
+)
+_URL_WITH_AUTH_OR_QUERY = re.compile(
+    r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s<>\"']+"
+)
+_KNOWN_TOKEN_PREFIX = re.compile(
+    r"(?i)\b(?:sk|ghp|github_pat|token|key)-[A-Za-z0-9_-]{12,}\b"
+)
+_LONG_OPAQUE_TOKEN = re.compile(
+    r"(?<![A-Za-z0-9_+/=-])[A-Za-z0-9_+/=-]{24,}(?![A-Za-z0-9_+/=-])"
+)
+
+
+def _redact_url(match: re.Match[str]) -> str:
+    raw = match.group(0)
+    trailing = ""
+    while raw and raw[-1] in ".,;)}":
+        trailing = raw[-1] + trailing
+        raw = raw[:-1]
+    try:
+        parsed = urlsplit(raw)
+        if not parsed.scheme or not parsed.netloc:
+            return "[REDACTED_URL]" + trailing
+        # Drop userinfo completely.  Keeping the host/path is useful for
+        # diagnostics; query and fragment values are never persisted.
+        netloc = parsed.netloc.rsplit("@", 1)[-1]
+        query = "[REDACTED]" if parsed.query else ""
+        fragment = "[REDACTED]" if parsed.fragment else ""
+        return urlunsplit(
+            (parsed.scheme, netloc, parsed.path, query, fragment)
+        ) + trailing
+    except ValueError:
+        return "[REDACTED_URL]" + trailing
+
+
+def sanitize_failure_text(value: object, *, max_chars: int = MAX_FAILURE_TEXT_CHARS) -> str:
+    """Return an idempotently redacted, bounded diagnostic string.
+
+    Failure text is data, but exceptions frequently include request headers,
+    signed URLs, credentials or provider response bodies.  This sanitizer is
+    applied before *both* failure.json and suite_state.json are written.
+    """
+
+    text = str(value)
+    text = _BEARER_SECRET.sub("Bearer [REDACTED]", text)
+    text = _LABELED_SECRET.sub(
+        lambda match: (
+            f'{match.group("prefix")}"[REDACTED]"'
+            if match.group("double") is not None
+            else (
+                f"{match.group('prefix')}'[REDACTED]'"
+                if match.group("single") is not None
+                else f"{match.group('prefix')}[REDACTED]"
+            )
+        ),
+        text,
+    )
+    text = _URL_WITH_AUTH_OR_QUERY.sub(_redact_url, text)
+    text = _KNOWN_TOKEN_PREFIX.sub("[REDACTED]", text)
+    text = _LONG_OPAQUE_TOKEN.sub("[REDACTED]", text)
+    # Normalize through the repository-wide sanitizer last so the persisted
+    # representation is exactly what assert_json_safe accepts.  This also
+    # removes short reasoning_content values, which token-length heuristics do
+    # not catch.
+    text = sanitize_shared_failure_text(text)
+    if len(text) > max_chars:
+        text = text[:max_chars] + "…[TRUNCATED]"
+    return text.strip() or "unspecified failure"
+
+
+def failure_text_contains_sensitive_material(value: object) -> bool:
+    """Conservative detector used by the artifact auditor and tests."""
+
+    text = str(value)
+    return (
+        sanitize_shared_failure_text(text) != text
+        or sanitize_failure_text(text, max_chars=max(len(text), 1)) != text.strip()
+    )
 
 
 class PilotArm(str, Enum):
@@ -77,6 +199,95 @@ class CellOutcome(str, Enum):
 class SuiteStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
+
+
+def derive_generator_seed(
+    base_seed: int,
+    question_id: str,
+    replicate: int,
+    arm: str,
+    stage: str,
+) -> int:
+    material = (
+        f"{base_seed}\0{question_id}\0{replicate}\0{arm}\0{stage}"
+    ).encode("utf-8")
+    return int.from_bytes(hashlib.sha256(material).digest()[:4], "big") & 0x7FFFFFFF
+
+
+def generator_cache_namespace(
+    base_namespace: str,
+    question_id: str,
+    replicate: int,
+    arm: str,
+    stage: str,
+) -> str:
+    identity = hashlib.sha256(
+        f"{question_id}\0{replicate}\0{arm}\0{stage}".encode("utf-8")
+    ).hexdigest()[:16]
+    return f"{base_namespace}-{identity}"
+
+
+def derive_judge_claim_seed(
+    root_seed: int,
+    question_id: str,
+    replicate: int,
+    claim_id: str,
+) -> int:
+    material = f"{root_seed}\0{question_id}\0{replicate}\0{claim_id}".encode(
+        "utf-8"
+    )
+    return int.from_bytes(hashlib.sha256(material).digest()[:4], "big") & 0x7FFFFFFF
+
+
+class GeneratorProvenance(StrictModel):
+    execution_kind: Literal["remote_hy3", "test_fixture"]
+    provider: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    endpoint_origin: str = Field(min_length=1)
+    endpoint_url: str = Field(min_length=1)
+    config_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    config_hash_scope: Literal["source_file_bytes"] = "source_file_bytes"
+    temperature: float = GENERATOR_TEMPERATURE
+    base_seed: int
+    seed_policy: Literal[
+        "sha256_v1(base_seed+nul+question_id+nul+replicate+nul+arm+nul+stage)_31bit"
+    ] = GENERATOR_SEED_POLICY
+    cache_namespace: str = Field(
+        pattern=r"^mitoevidence-[A-Za-z0-9_.-]{1,96}$"
+    )
+
+    @model_validator(mode="after")
+    def _identity_is_safe(self) -> "GeneratorProvenance":
+        endpoint = urlsplit(self.endpoint_origin)
+        if (
+            not endpoint.scheme
+            or not endpoint.netloc
+            or endpoint.username is not None
+            or endpoint.password is not None
+            or endpoint.query
+            or endpoint.fragment
+            or endpoint.path not in {"", "/"}
+        ):
+            raise ValueError("generator endpoint_origin 必须是无凭据/query/path 的 origin")
+        endpoint_url = urlsplit(self.endpoint_url)
+        if (
+            not endpoint_url.scheme
+            or not endpoint_url.netloc
+            or endpoint_url.username is not None
+            or endpoint_url.password is not None
+            or endpoint_url.query
+            or endpoint_url.fragment
+            or not endpoint_url.path.endswith("/chat/completions")
+            or f"{endpoint_url.scheme}://{endpoint_url.netloc}" != self.endpoint_origin
+        ):
+            raise ValueError(
+                "generator endpoint_url 必须是无凭据/query 的完整 chat/completions URL"
+            )
+        if self.temperature != GENERATOR_TEMPERATURE:
+            raise ValueError(f"generator temperature 必须冻结为 {GENERATOR_TEMPERATURE}")
+        if self.execution_kind == "remote_hy3" and self.provider != "tencent-tokenhub":
+            raise ValueError("remote_hy3 generator provider 必须是 tencent-tokenhub")
+        return self
 
 
 class ArmDefinition(StrictModel):
@@ -171,11 +382,137 @@ class ClaimGateAudit(StrictModel):
     def _claim_matches(self) -> "ClaimGateAudit":
         if self.aggregate.claim_id != self.claim_id:
             raise ValueError("gate claim_id 与 aggregate.claim_id 不一致")
+        expected_passed = (
+            self.aggregate.final_verdict
+            in {
+                SupportVerdict.FULLY_SUPPORTED,
+                SupportVerdict.PARTIALLY_SUPPORTED,
+            }
+            and not self.aggregate.escalate_to_human
+        )
+        if self.passed is not expected_passed:
+            raise ValueError("gate.passed 与冻结门控规则不一致")
+        return self
+
+
+class JudgeSampleBinding(StrictModel):
+    """Hash binding from one provenance record to one stored Judge sample."""
+
+    index: int = Field(ge=0)
+    ok: bool
+    sample_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    response_sha256: str = Field(pattern=r"^(?:[0-9a-f]{64})?$")
+    temperature: float | None = None
+    seed: int | None = None
+
+    @classmethod
+    def from_sample(cls, sample: JudgeSample) -> "JudgeSampleBinding":
+        return cls(
+            index=sample.index,
+            ok=sample.ok,
+            sample_sha256=_sha_model(sample),
+            response_sha256=sample.response_sha256,
+            temperature=sample.temperature,
+            seed=sample.seed,
+        )
+
+
+class JudgeClaimProvenance(StrictModel):
+    """Base prompt plus exact sample bindings for one gated C claim."""
+
+    claim_id: str = Field(min_length=1)
+    prompt_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    prompt_hash_scope: Literal["base_messages_before_repair"] = (
+        "base_messages_before_repair"
+    )
+    derived_base_seed: int | None = None
+    samples: list[JudgeSampleBinding]
+
+    @model_validator(mode="after")
+    def _unique_sample_indices(self) -> "JudgeClaimProvenance":
+        indices = [sample.index for sample in self.samples]
+        if len(indices) != len(set(indices)):
+            raise ValueError("Judge provenance sample index 不得重复")
+        return self
+
+
+class JudgeProvenanceIdentity(StrictModel):
+    """Frozen Judge identity and sampling policy, independent of claim count."""
+
+    execution_kind: Literal["remote_hy3", "test_fixture"]
+    provider: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    endpoint_origin: str = Field(min_length=1)
+    endpoint_url: str = Field(min_length=1)
+    config_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    config_hash_scope: Literal["source_file_bytes"]
+    schema_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    prompt_template_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    structured_output_channel: Literal["function_calling", "json_schema"]
+    k: int = Field(ge=1)
+    temperature: float = Field(gt=0, le=2)
+    base_seed: int | None = None
+    sampling_seed_policy: Literal[
+        "sha256_v1(root_seed+nul+question_id+nul+replicate+nul+claim_id)_31bit;sample_seed=derived_base_seed+sample_index"
+    ] = JUDGE_SEED_POLICY
+    min_agreement_votes: int = Field(ge=1)
+    escalate_on_refuted: bool
+
+    @model_validator(mode="after")
+    def _identity_is_coherent(self) -> "JudgeProvenanceIdentity":
+        if self.min_agreement_votes > self.k:
+            raise ValueError("Judge min_agreement_votes 不得超过 k")
+        endpoint = urlsplit(self.endpoint_url)
+        if (
+            not endpoint.scheme
+            or not endpoint.netloc
+            or endpoint.username is not None
+            or endpoint.password is not None
+            or endpoint.query
+            or endpoint.fragment
+            or not endpoint.path.endswith("/chat/completions")
+        ):
+            raise ValueError("Judge endpoint_url 必须是无凭据、无 query 的 chat/completions URL")
+        expected_origin = f"{endpoint.scheme}://{endpoint.netloc}"
+        if self.endpoint_origin != expected_origin:
+            raise ValueError("Judge endpoint_origin 与 endpoint_url 不一致")
+        if self.execution_kind == "remote_hy3" and self.provider != "tencent-tokenhub":
+            raise ValueError("remote_hy3 provider 必须明确标记 tencent-tokenhub")
+        return self
+
+
+class JudgeProvenance(JudgeProvenanceIdentity):
+    """Auditable D-arm Judge provenance, including every per-claim call."""
+
+    execution_status: Literal[
+        "remote_invoked",
+        "test_fixture_invoked",
+        "no_claims_no_request",
+    ]
+    calls: list[JudgeClaimProvenance]
+
+    @model_validator(mode="after")
+    def _unique_claim_calls(self) -> "JudgeProvenance":
+        claim_ids = [call.claim_id for call in self.calls]
+        if len(claim_ids) != len(set(claim_ids)):
+            raise ValueError("Judge provenance claim_id 不得重复")
+        if not self.calls:
+            if self.execution_status != "no_claims_no_request":
+                raise ValueError("无 Judge calls 时 execution_status 必须是 no_claims_no_request")
+        elif self.execution_kind == "remote_hy3":
+            if self.execution_status != "remote_invoked":
+                raise ValueError("remote_hy3 calls 必须标记 remote_invoked")
+        elif self.execution_status != "test_fixture_invoked":
+            raise ValueError("test_fixture calls 必须标记 test_fixture_invoked")
         return self
 
 
 class AblationCellArtifact(StrictModel):
-    schema_version: Literal["mitoevidence.pilot-ablation.v1"] = ABLATION_ARTIFACT_VERSION
+    schema_version: Literal[
+        "mitoevidence.pilot-ablation.v1",
+        "mitoevidence.pilot-ablation.v2",
+        "mitoevidence.pilot-ablation.v3",
+    ] = ABLATION_ARTIFACT_VERSION
     arm: PilotArm
     arm_definition: ArmDefinition
     question_id: str
@@ -189,10 +526,14 @@ class AblationCellArtifact(StrictModel):
     retrieval: RetrievalAudit
     review: GeneratedReview
     model_calls: list[ModelCallAudit]
+    generator_provenance: GeneratorProvenance | None = None
     claim_gates: list[ClaimGateAudit] = Field(default_factory=list)
+    judge_provenance: JudgeProvenance | None = None
     parent_c_artifact_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     warnings: list[str] = Field(default_factory=list)
-    formal_status: str = "pilot_ablation_generation_unscored"
+    formal_status: Literal["pilot_ablation_generation_unscored"] = (
+        ABLATION_FORMAL_STATUS
+    )
 
     @model_validator(mode="after")
     def _arm_contract(self) -> "AblationCellArtifact":
@@ -222,13 +563,213 @@ class AblationCellArtifact(StrictModel):
         passage_ids = [passage.passage_id for passage in self.passages]
         if self.retrieval.selected_passage_ids != passage_ids:
             raise ValueError("retrieval.selected_passage_ids 必须与 passages 顺序完全一致")
+        if self.schema_version == ABLATION_ARTIFACT_VERSION:
+            if self.generator_provenance is None:
+                raise ValueError("v3 cell 必须保存 generator_provenance")
+            expected_stages = (
+                ["ablation_A_direct"]
+                if self.arm is PilotArm.A
+                else ["plan", "synthesis"]
+            )
+            if [call.stage for call in self.model_calls] != expected_stages:
+                raise ValueError("v3 cell model_calls stage 组合不合规")
+            generation_arm = PilotArm.C.value if self.arm is PilotArm.D else self.arm.value
+            for call in self.model_calls:
+                identity = self.generator_provenance
+                if (
+                    call.provider != identity.provider
+                    or call.model != identity.model
+                    or call.endpoint_origin != identity.endpoint_origin
+                    or call.endpoint_url != identity.endpoint_url
+                    or call.config_sha256 != identity.config_sha256
+                    or call.temperature != identity.temperature
+                ):
+                    raise ValueError("v3 cell model_call 与 generator_provenance identity 不一致")
+                seed_replicate = 0 if call.stage == "plan" else self.replicate
+                seed_arm = "shared" if call.stage == "plan" else generation_arm
+                expected_seed = derive_generator_seed(
+                    identity.base_seed,
+                    self.question_id,
+                    seed_replicate,
+                    seed_arm,
+                    call.stage,
+                )
+                expected_namespace = generator_cache_namespace(
+                    identity.cache_namespace,
+                    self.question_id,
+                    seed_replicate,
+                    seed_arm,
+                    call.stage,
+                )
+                if call.requested_seed != expected_seed:
+                    raise ValueError("v3 cell model_call requested_seed 不符合冻结派生策略")
+                if call.cache_namespace != expected_namespace:
+                    raise ValueError("v3 cell model_call cache_namespace 不符合冻结派生策略")
+                hash_fields = (
+                    call.prompt_sha256,
+                    call.base_prompt_sha256,
+                    call.schema_sha256,
+                    call.response_sha256,
+                    call.structured_output_sha256,
+                )
+                if any(not re.fullmatch(r"[0-9a-f]{64}", value) for value in hash_fields):
+                    raise ValueError("v3 cell model_call 必须保存完整 prompt/schema/response/output hash")
+                if call.attempt_count != 1:
+                    raise ValueError("v3 formal cell 当前只允许无需 repair 的单次成功调用")
         if self.arm is not PilotArm.D and self.claim_gates:
             raise ValueError("只有 Arm D 可以包含 claim_gates")
         if self.arm is PilotArm.D:
             if self.parent_c_artifact_sha256 is None:
                 raise ValueError("Arm D 必须绑定精确 C artifact hash")
+            gate_ids = [gate.claim_id for gate in self.claim_gates]
+            if len(gate_ids) != len(set(gate_ids)):
+                raise ValueError("Arm D claim_gates.claim_id 不得重复")
+            passed_gate_ids = [
+                gate.claim_id for gate in self.claim_gates if gate.passed
+            ]
+            review_claim_ids = [claim.claim_id for claim in self.review.claims]
+            if review_claim_ids != passed_gate_ids:
+                raise ValueError("Arm D review.claims 必须与 passed gates 同序一一对应")
+            if self.review.answerability is not Answerability.OUT_OF_SCOPE:
+                if self.review.claims:
+                    if self.review.answerability is Answerability.INSUFFICIENT:
+                        raise ValueError("Arm D 保留 claims 时 answerability 不得为 insufficient")
+                    expected_answer = (
+                        "经自动 Claim—Evidence Judge 门控保留的主张：\n"
+                        + "\n".join(f"- {claim.text}" for claim in self.review.claims)
+                    )
+                    if self.review.answer != expected_answer:
+                        raise ValueError("Arm D answer 不是 passed claims 的确定性渲染")
+                elif (
+                    self.review.answerability is not Answerability.INSUFFICIENT
+                    or self.review.answer
+                    != "C 草稿中的主张均未通过自动 Claim—Evidence Judge 门控，因此不保留科学结论。"
+                ):
+                    raise ValueError("Arm D 无 passed claims 时必须使用冻结的 insufficient 拒答")
+            expected_limitation_suffix = [
+                "D 是自动 Hy3 Judge 门控，不是专家复核。",
+                f"门控保留 {len(self.review.claims)}/{len(self.claim_gates)} 条主张。",
+            ]
+            if self.review.limitations[-2:] != expected_limitation_suffix:
+                raise ValueError("Arm D limitations 缺少冻结的门控后缀")
+            judge_k = (
+                self.judge_provenance.k
+                if self.judge_provenance is not None
+                else (
+                    self.claim_gates[0].aggregate.k
+                    if self.claim_gates
+                    else None
+                )
+            )
+            if judge_k is not None:
+                expected_warning_suffix = [
+                    "D 未追加检索，且输出是通过 gate 的 C 主张确定性渲染。",
+                    (
+                        "D Pilot Judge k=1，仅为单次自动门控，不是自一致性稳定性实验。"
+                        if judge_k == 1
+                        else f"D Judge 使用自一致性 k={judge_k}。"
+                    ),
+                ]
+                if self.warnings[-2:] != expected_warning_suffix:
+                    raise ValueError("Arm D warnings 缺少冻结的派生后缀")
+            if (
+                self.schema_version != LEGACY_ABLATION_ARTIFACT_VERSION
+                and self.judge_provenance is None
+            ):
+                raise ValueError("v2/v3 Arm D 必须保存可审计 Judge provenance")
+            if self.judge_provenance is None:
+                return self
+            if (
+                self.schema_version == ABLATION_ARTIFACT_VERSION
+                and self.judge_provenance.base_seed is None
+            ):
+                raise ValueError("v3 Arm D Judge base_seed 不得为空")
+            gate_ids = [gate.claim_id for gate in self.claim_gates]
+            call_ids = [call.claim_id for call in self.judge_provenance.calls]
+            if call_ids != gate_ids:
+                raise ValueError("Judge provenance calls 必须与 claim_gates 同序一一对应")
+            for gate, call in zip(
+                self.claim_gates,
+                self.judge_provenance.calls,
+                strict=True,
+            ):
+                if gate.aggregate.k != self.judge_provenance.k:
+                    raise ValueError("Judge aggregate.k 与 provenance.k 不一致")
+                if len(gate.aggregate.samples) != self.judge_provenance.k:
+                    raise ValueError("Judge aggregate 必须保存全部 k 个 samples")
+                if [sample.index for sample in gate.aggregate.samples] != list(
+                    range(self.judge_provenance.k)
+                ):
+                    raise ValueError("Judge sample indices 必须恰为 0..k-1")
+                for sample in gate.aggregate.samples:
+                    if sample.ok:
+                        if (
+                            sample.verdict is None
+                            or sample.error
+                            or not sample.parse_source
+                            or not re.fullmatch(
+                                r"[0-9a-f]{64}", sample.response_sha256
+                            )
+                        ):
+                            raise ValueError("Judge 成功 sample 的 verdict/response/error 不自洽")
+                        if sample.verdict.claim_id != gate.claim_id:
+                            raise ValueError("Judge sample verdict.claim_id 与 gate 不一致")
+                        if not set(sample.verdict.evidence_span_refs).issubset(
+                            passage_ids
+                        ):
+                            raise ValueError("Judge sample 引用了未选中的 passage")
+                    elif sample.verdict is not None or not sample.error:
+                        raise ValueError("Judge 失败 sample 的 verdict/error 不自洽")
+                expected_aggregate = aggregate_samples(
+                    gate.claim_id,
+                    gate.aggregate.samples,
+                    k=self.judge_provenance.k,
+                    min_agreement_votes=self.judge_provenance.min_agreement_votes,
+                    escalate_on_refuted=self.judge_provenance.escalate_on_refuted,
+                )
+                if gate.aggregate != expected_aggregate:
+                    raise ValueError("Judge aggregate 不是由已存 samples 按冻结规则重算得到")
+                expected_samples = [
+                    JudgeSampleBinding.from_sample(sample)
+                    for sample in gate.aggregate.samples
+                ]
+                if call.samples != expected_samples:
+                    raise ValueError("Judge provenance sample 绑定与 aggregate.samples 不一致")
+                if any(
+                    sample.temperature != self.judge_provenance.temperature
+                    for sample in gate.aggregate.samples
+                ):
+                    raise ValueError("Judge sample temperature 与 provenance 不一致")
+                effective_base_seed = (
+                    call.derived_base_seed
+                    if call.derived_base_seed is not None
+                    else self.judge_provenance.base_seed
+                )
+                if self.schema_version == ABLATION_ARTIFACT_VERSION:
+                    if self.judge_provenance.base_seed is None:
+                        raise ValueError("v3 Judge root seed 不得为空")
+                    expected_derived = derive_judge_claim_seed(
+                        self.judge_provenance.base_seed,
+                        self.question_id,
+                        self.replicate,
+                        gate.claim_id,
+                    )
+                    if call.derived_base_seed != expected_derived:
+                        raise ValueError("v3 Judge derived_base_seed 不符合冻结派生策略")
+                expected_seeds = (
+                    [None] * self.judge_provenance.k
+                    if effective_base_seed is None
+                    else [
+                        effective_base_seed + index
+                        for index in range(self.judge_provenance.k)
+                    ]
+                )
+                if [sample.seed for sample in gate.aggregate.samples] != expected_seeds:
+                    raise ValueError("Judge sample seeds 与 provenance base_seed 不一致")
         elif self.parent_c_artifact_sha256 is not None:
             raise ValueError("只有 Arm D 可以填写 parent_c_artifact_sha256")
+        elif self.judge_provenance is not None:
+            raise ValueError("只有 Arm D 可以填写 judge_provenance")
         return self
 
 
@@ -285,7 +826,11 @@ class AblationSafety(StrictModel):
 
 
 class PilotAblationSuiteState(StrictModel):
-    schema_version: Literal["mitoevidence.pilot-ablation.v1"] = ABLATION_ARTIFACT_VERSION
+    schema_version: Literal[
+        "mitoevidence.pilot-ablation.v1",
+        "mitoevidence.pilot-ablation.v2",
+        "mitoevidence.pilot-ablation.v3",
+    ] = ABLATION_ARTIFACT_VERSION
     suite_id: str
     status: SuiteStatus
     created_at_utc: str
@@ -297,16 +842,40 @@ class PilotAblationSuiteState(StrictModel):
     replicates: int = Field(ge=1)
     top_k: int = Field(ge=1)
     judge_k: int = Field(ge=1)
+    generator_provenance: GeneratorProvenance | None = None
+    judge_provenance_identity: JudgeProvenanceIdentity | None = None
+    shared_plan_policy: Literal[
+        "one_plan_per_question_shared_by_B_C_D_and_all_replicates"
+    ] = "one_plan_per_question_shared_by_B_C_D_and_all_replicates"
+    evidence_budget_policy: Literal[
+        "B_and_C_same_top_k;_D_exact_C_snapshot"
+    ] = "B_and_C_same_top_k;_D_exact_C_snapshot"
     expected_grid_cells: int = Field(ge=0)
     records: list[AblationCellRecord]
     planning_failures: dict[str, str] = Field(default_factory=dict)
-    formal_status: str = "pilot_ablation_generation_unscored"
+    formal_status: Literal["pilot_ablation_generation_unscored"] = (
+        ABLATION_FORMAL_STATUS
+    )
     safety: AblationSafety = Field(default_factory=AblationSafety)
 
     @model_validator(mode="after")
     def _grid_is_auditable(self) -> "PilotAblationSuiteState":
+        if (
+            self.schema_version == ABLATION_ARTIFACT_VERSION
+            and self.generator_provenance is None
+        ):
+            raise ValueError("v3 suite 必须在顶层固定 generator_provenance")
+        if self.schema_version == ABLATION_ARTIFACT_VERSION:
+            if self.judge_provenance_identity is None:
+                raise ValueError("v3 suite 必须在顶层固定 judge_provenance_identity")
+            if self.judge_provenance_identity.base_seed is None:
+                raise ValueError("v3 formal suite 的 Judge base_seed 不得为空")
+            if self.judge_provenance_identity.k != self.judge_k:
+                raise ValueError("v3 suite judge_k 与 Judge provenance 不一致")
         if Counter(definition.arm for definition in self.arm_definitions) != Counter(PilotArm):
             raise ValueError("arm_definitions 必须且只能包含 A/B/C/D 各一次")
+        if self.arm_definitions != list(ARM_DEFINITIONS):
+            raise ValueError("arm_definitions 必须与冻结的 A/B/C/D runtime 定义完全一致")
         if len(self.input_snapshot.question_ids) != len(set(self.input_snapshot.question_ids)):
             raise ValueError("input_snapshot.question_ids 必须唯一")
         expected = len(self.input_snapshot.question_ids) * self.replicates * len(PilotArm)
@@ -346,15 +915,171 @@ class PilotAblationSuiteState(StrictModel):
         return self
 
 
+def audit_pilot_ablation_grid(state: PilotAblationSuiteState) -> dict[str, object]:
+    """Audit the runtime suite-state grid without opening cell artifacts.
+
+    ``PilotAblationSuiteState`` already rejects duplicate/out-of-range keys and
+    a dishonest ``expected_grid_cells`` declaration.  This report makes the
+    complete Cartesian product and every explicit failed outcome visible.  It
+    deliberately does not claim to verify D's ``parent_c_artifact_sha256``:
+    that binding lives inside cell artifacts and requires artifact-level hash
+    auditing, not projection from the suite journal.
+    """
+
+    records = {
+        (record.question_id, record.arm, record.replicate): record
+        for record in state.records
+    }
+    missing: list[dict[str, object]] = []
+    outcomes: Counter[str] = Counter()
+    by_arm: dict[str, dict[str, int]] = {}
+    for question_id in state.input_snapshot.question_ids:
+        for arm in PilotArm:
+            for replicate in range(1, state.replicates + 1):
+                record = records.get((question_id, arm, replicate))
+                if record is None:
+                    missing.append(
+                        {
+                            "question_id": question_id,
+                            "arm": arm.value,
+                            "replicate": replicate,
+                        }
+                    )
+                else:
+                    outcomes[record.outcome.value] += 1
+
+    expected_per_arm = len(state.input_snapshot.question_ids) * state.replicates
+    for arm in PilotArm:
+        arm_records = [record for record in state.records if record.arm is arm]
+        by_arm[arm.value] = {
+            "expected": expected_per_arm,
+            "recorded": len(arm_records),
+            "succeeded": sum(
+                record.outcome is CellOutcome.SUCCEEDED for record in arm_records
+            ),
+            "failed": sum(
+                record.outcome is CellOutcome.FAILED for record in arm_records
+            ),
+        }
+
+    computed_expected = (
+        len(state.input_snapshot.question_ids) * state.replicates * len(PilotArm)
+    )
+    recorded = len(state.records)
+    grid_complete = not missing
+    suite_finalized = state.status is SuiteStatus.COMPLETED
+    return {
+        "schema_version": "mitoevidence.pilot-ablation-grid-audit.v1",
+        "input_schema": state.schema_version,
+        "suite_id": state.suite_id,
+        "suite_status": state.status.value,
+        "formal_status": ABLATION_FORMAL_STATUS_BY_SCHEMA_VERSION[
+            state.schema_version
+        ],
+        "formal_status_source": "runtime_constant_by_input_schema",
+        "expected_grid_cells": computed_expected,
+        "declared_expected_grid_cells": state.expected_grid_cells,
+        "recorded_grid_cells": recorded,
+        "missing_grid_cells": len(missing),
+        "grid_complete": grid_complete,
+        "suite_finalized": suite_finalized,
+        "runtime_complete": grid_complete and suite_finalized,
+        "outcomes": dict(sorted(outcomes.items())),
+        "by_arm": by_arm,
+        "missing": missing,
+        "checks": {
+            "canonical_arm_definitions_match_runtime": (
+                state.arm_definitions == list(ARM_DEFINITIONS)
+            ),
+            "fixed_shared_plan_and_evidence_budget_policies": (
+                state.shared_plan_policy
+                == "one_plan_per_question_shared_by_B_C_D_and_all_replicates"
+                and state.evidence_budget_policy
+                == "B_and_C_same_top_k;_D_exact_C_snapshot"
+            ),
+            "safety_flags_fail_closed": state.safety == AblationSafety(),
+            "declared_expected_matches_cartesian_product": (
+                state.expected_grid_cells == computed_expected
+            ),
+            "recorded_outcomes_sum_to_recorded_grid_cells": (
+                sum(outcomes.values()) == recorded
+            ),
+            "explicit_failed_cells_retained_in_denominator": (
+                outcomes.get(CellOutcome.FAILED.value, 0)
+                == sum(
+                    record.outcome is CellOutcome.FAILED
+                    for record in state.records
+                )
+            ),
+        },
+        "artifact_level_checks": {
+            "scope": "not_checked_by_suite_state_only_audit",
+            "cell_manifest_and_file_hashes": {
+                "checked": False,
+                "reason": "需要 suite 目录中的 cell manifest 和实际文件",
+            },
+            "failure_json_matches_suite_record": {
+                "checked": False,
+                "reason": "需要打开每个失败 cell 的 failure.json",
+            },
+            "cell_dir_containment": {
+                "checked": False,
+                "reason": "纯 JSON state 审计不解析或访问 cell_dir",
+            },
+            "input_and_evidence_snapshot_file_hashes": {
+                "checked": False,
+                "reason": "suite_state 只记录固定值；需要仓库/输入文件进行重算",
+            },
+            "arm_semantics_and_shared_plan_evidence": {
+                "checked": False,
+                "reason": (
+                    "A/B/C/D 的检索方法、共享 plan、top-k 和 D 精确复用 C 证据"
+                    "均位于 cell artifacts"
+                ),
+            },
+            "d_parent_c_artifact_hash_binding": {
+                "checked": False,
+                "reason": (
+                    "suite_state 只固定各 cell manifest；D 的 "
+                    "parent_c_artifact_sha256 必须另行打开并核验 C/D artifact"
+                ),
+            },
+        },
+        "interpretation": (
+            "Runtime suite-state Cartesian-grid completeness audit. "
+            "Explicit outcome=failed cells remain recorded and are not missing. "
+            "Artifact semantics and file hashes are outside this state-only audit."
+        ),
+    }
+
+
 class AblationReviewModel(Protocol):
-    def plan(self, request: ReviewRequest) -> tuple[SearchPlan, ModelCallAudit]: ...
+    @property
+    def audit_identity(self) -> dict[str, str]: ...
+
+    def plan(
+        self,
+        request: ReviewRequest,
+        *,
+        seed: int | None = None,
+        cache_namespace: str = "mitoevidence-ablation-v3",
+    ) -> tuple[SearchPlan, ModelCallAudit]: ...
 
     def synthesize(
-        self, request: ReviewRequest, passages: list[CorpusPassage]
+        self,
+        request: ReviewRequest,
+        passages: list[CorpusPassage],
+        *,
+        seed: int | None = None,
+        cache_namespace: str = "mitoevidence-ablation-v3",
     ) -> tuple[GeneratedReview, ModelCallAudit]: ...
 
     def synthesize_direct(
-        self, request: ReviewRequest
+        self,
+        request: ReviewRequest,
+        *,
+        seed: int | None = None,
+        cache_namespace: str = "mitoevidence-ablation-v3",
     ) -> tuple[GeneratedReview, ModelCallAudit]: ...
 
 
@@ -362,8 +1087,19 @@ class ClaimGate(Protocol):
     @property
     def k(self) -> int: ...
 
+    @property
+    def provenance_identity(self) -> JudgeProvenanceIdentity: ...
+
+    @property
+    def last_call_provenance(self) -> JudgeClaimProvenance | None: ...
+
     def judge(
-        self, claim: AtomicClaim, spans: list[EvidenceSpan], *, question: str
+        self,
+        claim: AtomicClaim,
+        spans: list[EvidenceSpan],
+        *,
+        question: str,
+        base_seed_override: int | None = None,
     ) -> JudgeAggregate: ...
 
 
@@ -383,27 +1119,131 @@ class Hy3ClaimGate:
             raise ValueError("Judge k 必须为正整数")
         self.client = client
         self.config = config
+        if client.config.raw != config.raw or client.config.sha256 != config.sha256:
+            raise ValueError("Judge client.config 必须与 gate config 完全一致")
+        if not re.fullmatch(r"[0-9a-f]{64}", config.sha256):
+            raise ValueError("Judge config 必须来自可哈希的 source file bytes")
         self._k = int(k)
-        self.temperature = temperature
-        self.base_seed = base_seed
+        self.temperature = (
+            float(config.self_consistency["temperature"])
+            if temperature is None
+            else float(temperature)
+        )
+        if not 0 < self.temperature <= 2:
+            raise ValueError("Judge temperature 必须在 (0, 2] 内")
+        configured_seed = config.self_consistency.get("base_seed")
+        self.base_seed = (
+            (None if configured_seed is None else int(configured_seed))
+            if base_seed is None
+            else int(base_seed)
+        )
+        parsed_endpoint = urlsplit(client.transport.base_url)
+        if not parsed_endpoint.scheme or not parsed_endpoint.netloc:
+            raise ValueError("Judge endpoint 必须包含 scheme 和 host")
+        schema_sha256 = _sha_bytes(
+            json.dumps(
+                JUDGE_OUTPUT_SCHEMA,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        prompt_template_sha256 = _sha_bytes(
+            system_prefix(client.channel).encode("utf-8")
+        )
+        configured_k = int(config.self_consistency["k"])
+        configured_min_votes = int(
+            config.self_consistency["min_agreement_votes"]
+        )
+        effective_min_votes = (
+            configured_min_votes
+            if self._k == configured_k
+            else -(-configured_min_votes * self._k // configured_k)
+        )
+        endpoint_base = client.transport.base_url.rstrip("/")
+        self._provenance_identity = JudgeProvenanceIdentity(
+            execution_kind="remote_hy3",
+            provider="tencent-tokenhub",
+            model=client.model,
+            endpoint_origin=(
+                f"{parsed_endpoint.scheme}://{parsed_endpoint.netloc}"
+            ),
+            endpoint_url=f"{endpoint_base}/chat/completions",
+            config_sha256=config.sha256,
+            config_hash_scope="source_file_bytes",
+            schema_sha256=schema_sha256,
+            prompt_template_sha256=prompt_template_sha256,
+            structured_output_channel=client.channel,
+            k=self._k,
+            temperature=self.temperature,
+            base_seed=self.base_seed,
+            min_agreement_votes=effective_min_votes,
+            escalate_on_refuted=bool(
+                config.self_consistency.get("escalate_on_refuted", True)
+            ),
+        )
+        self._last_call_provenance: JudgeClaimProvenance | None = None
 
     @property
     def k(self) -> int:
         return self._k
 
+    @property
+    def provenance_identity(self) -> JudgeProvenanceIdentity:
+        return self._provenance_identity
+
+    @property
+    def last_call_provenance(self) -> JudgeClaimProvenance | None:
+        return self._last_call_provenance
+
     def judge(
-        self, claim: AtomicClaim, spans: list[EvidenceSpan], *, question: str
+        self,
+        claim: AtomicClaim,
+        spans: list[EvidenceSpan],
+        *,
+        question: str,
+        base_seed_override: int | None = None,
     ) -> JudgeAggregate:
-        return run_self_consistency(
+        self._last_call_provenance = None
+        base_messages = build_messages(
+            claim,
+            spans,
+            question,
+            channel=self.client.channel,
+        )
+        prompt_sha256 = _sha_bytes(
+            json.dumps(
+                base_messages,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        effective_base_seed = (
+            self.base_seed
+            if base_seed_override is None
+            else int(base_seed_override)
+        )
+        aggregate = run_self_consistency(
             self.client,
             claim,
             spans,
             question=question,
             k=self._k,
             temperature=self.temperature,
-            base_seed=self.base_seed,
+            base_seed=effective_base_seed,
             config=self.config,
         )
+        self._last_call_provenance = JudgeClaimProvenance(
+            claim_id=claim.claim_id,
+            prompt_sha256=prompt_sha256,
+            derived_base_seed=effective_base_seed,
+            samples=[
+                JudgeSampleBinding.from_sample(sample)
+                for sample in aggregate.samples
+            ],
+        )
+        return aggregate
 
 
 def _json_bytes(value: object) -> bytes:
@@ -538,6 +1378,61 @@ def _judge_unit(
     return claim, spans
 
 
+def derive_d_review_and_warnings(
+    c_artifact: AblationCellArtifact,
+    gates: Sequence[ClaimGateAudit],
+    *,
+    judge_k: int,
+) -> tuple[GeneratedReview, list[str]]:
+    """Deterministically derive D from the exact C draft and gate decisions."""
+
+    c_claim_ids = [claim.claim_id for claim in c_artifact.review.claims]
+    gate_ids = [gate.claim_id for gate in gates]
+    if gate_ids != c_claim_ids:
+        raise ValueError("D gates 必须与 C claims 同序一一对应")
+    accepted = [
+        claim
+        for claim, gate in zip(c_artifact.review.claims, gates, strict=True)
+        if gate.passed
+    ]
+    if c_artifact.review.answerability is Answerability.OUT_OF_SCOPE:
+        accepted = []
+        answerability = Answerability.OUT_OF_SCOPE
+        answer = c_artifact.review.answer
+    elif accepted:
+        answerability = (
+            Answerability.PARTIAL
+            if c_artifact.review.answerability is Answerability.INSUFFICIENT
+            else c_artifact.review.answerability
+        )
+        answer = "经自动 Claim—Evidence Judge 门控保留的主张：\n" + "\n".join(
+            f"- {claim.text}" for claim in accepted
+        )
+    else:
+        answerability = Answerability.INSUFFICIENT
+        answer = "C 草稿中的主张均未通过自动 Claim—Evidence Judge 门控，因此不保留科学结论。"
+    review = GeneratedReview(
+        answerability=answerability,
+        answer=answer,
+        claims=accepted,
+        limitations=[
+            *c_artifact.review.limitations,
+            "D 是自动 Hy3 Judge 门控，不是专家复核。",
+            f"门控保留 {len(accepted)}/{len(c_artifact.review.claims)} 条主张。",
+        ],
+    )
+    warnings = [
+        *c_artifact.warnings,
+        "D 未追加检索，且输出是通过 gate 的 C 主张确定性渲染。",
+        (
+            "D Pilot Judge k=1，仅为单次自动门控，不是自一致性稳定性实验。"
+            if judge_k == 1
+            else f"D Judge 使用自一致性 k={judge_k}。"
+        ),
+    ]
+    return review, warnings
+
+
 class PilotAblationRunner:
     def __init__(
         self,
@@ -546,6 +1441,8 @@ class PilotAblationRunner:
         corpus: FrozenReviewCorpus,
         claim_gate: ClaimGate,
         top_k: int = 12,
+        generator_base_seed: int = 20260831,
+        generator_cache_namespace: str = "mitoevidence-ablation-v3",
     ):
         if top_k <= 0:
             raise ValueError("top_k 必须为正整数")
@@ -553,6 +1450,19 @@ class PilotAblationRunner:
         self.corpus = corpus
         self.claim_gate = claim_gate
         self.top_k = top_k
+        identity = getattr(model, "audit_identity", None)
+        if not isinstance(identity, dict):
+            raise ValueError("ablation model 必须暴露 audit_identity")
+        self.generator_provenance = GeneratorProvenance.model_validate(
+            {
+                **identity,
+                "temperature": GENERATOR_TEMPERATURE,
+                "base_seed": generator_base_seed,
+                "cache_namespace": generator_cache_namespace,
+            }
+        )
+        if claim_gate.provenance_identity.base_seed is None:
+            raise ValueError("v3 formal ablation 要求 Judge base_seed 非空")
         passages = corpus.load()
         self.tfidf = SparseTfidfIndex(passages)
         self.graph = FrozenEvidenceGraphRetriever(self.tfidf)
@@ -593,7 +1503,25 @@ class PilotAblationRunner:
         )
 
     def run_a(self, request: ReviewRequest, replicate: int) -> AblationCellArtifact:
-        review, audit = self.model.synthesize_direct(request)
+        seed = derive_generator_seed(
+            self.generator_provenance.base_seed,
+            request.question_id,
+            replicate,
+            PilotArm.A.value,
+            "ablation_A_direct",
+        )
+        namespace = generator_cache_namespace(
+            self.generator_provenance.cache_namespace,
+            request.question_id,
+            replicate,
+            PilotArm.A.value,
+            "ablation_A_direct",
+        )
+        review, audit = self.model.synthesize_direct(
+            request,
+            seed=seed,
+            cache_namespace=namespace,
+        )
         return AblationCellArtifact(
             arm=PilotArm.A,
             arm_definition=ARM_DEFINITION_BY_ID[PilotArm.A],
@@ -620,6 +1548,7 @@ class PilotAblationRunner:
             ),
             review=review,
             model_calls=[audit],
+            generator_provenance=self.generator_provenance,
             warnings=["Arm A 无检索；所有科学主张均无外部证据绑定。"],
         )
 
@@ -649,8 +1578,25 @@ class PilotAblationRunner:
         synthesis_request = request.model_copy(
             update={"answerability_hint": plan.answerability_hint}
         )
+        seed = derive_generator_seed(
+            self.generator_provenance.base_seed,
+            request.question_id,
+            replicate,
+            arm.value,
+            "synthesis",
+        )
+        namespace = generator_cache_namespace(
+            self.generator_provenance.cache_namespace,
+            request.question_id,
+            replicate,
+            arm.value,
+            "synthesis",
+        )
         review, synthesis_audit = self.model.synthesize(
-            synthesis_request, result.passages
+            synthesis_request,
+            result.passages,
+            seed=seed,
+            cache_namespace=namespace,
         )
         warnings = self._validate_grounded_review(review, result.passages)
         if arm is PilotArm.B:
@@ -676,6 +1622,7 @@ class PilotAblationRunner:
             ),
             review=review,
             model_calls=[plan_audit, synthesis_audit],
+            generator_provenance=self.generator_provenance,
             warnings=warnings,
         )
 
@@ -702,16 +1649,33 @@ class PilotAblationRunner:
             raise ValueError("D 必须从 C artifact 开始")
         passage_by_id = {passage.passage_id: passage for passage in c_artifact.passages}
         gates: list[ClaimGateAudit] = []
-        accepted: list[GeneratedClaim] = []
+        judge_calls: list[JudgeClaimProvenance] = []
         for generated in c_artifact.review.claims:
             claim, spans = _judge_unit(generated, passage_by_id)
+            judge_seed = derive_judge_claim_seed(
+                self.claim_gate.provenance_identity.base_seed,
+                c_artifact.question_id,
+                c_artifact.replicate,
+                generated.claim_id,
+            )
             aggregate = self.claim_gate.judge(
-                claim, spans, question=c_artifact.request.question
+                claim,
+                spans,
+                question=c_artifact.request.question,
+                base_seed_override=judge_seed,
             )
             if aggregate.claim_id != generated.claim_id:
                 raise ValueError("Judge aggregate.claim_id 与输入 claim 不一致")
             if aggregate.n_valid == 0:
                 raise RuntimeError(f"D gate 对 {generated.claim_id} 没有任何有效 Judge 判定")
+            call_provenance = self.claim_gate.last_call_provenance
+            if (
+                call_provenance is None
+                or call_provenance.claim_id != generated.claim_id
+            ):
+                raise RuntimeError(
+                    f"D gate 未为 {generated.claim_id} 返回匹配的 Judge provenance"
+                )
             passed = (
                 aggregate.final_verdict
                 in {SupportVerdict.FULLY_SUPPORTED, SupportVerdict.PARTIALLY_SUPPORTED}
@@ -724,36 +1688,11 @@ class PilotAblationRunner:
                     aggregate=aggregate,
                 )
             )
-            if passed:
-                accepted.append(generated)
-
-        if c_artifact.review.answerability is Answerability.OUT_OF_SCOPE:
-            # D includes an automatic refusal boundary in addition to the
-            # evidence gate; an out-of-scope answer never publishes claims.
-            accepted = []
-            answerability = Answerability.OUT_OF_SCOPE
-            answer = c_artifact.review.answer
-        elif accepted:
-            answerability = (
-                Answerability.PARTIAL
-                if c_artifact.review.answerability is Answerability.INSUFFICIENT
-                else c_artifact.review.answerability
-            )
-            answer = "经自动 Claim—Evidence Judge 门控保留的主张：\n" + "\n".join(
-                f"- {claim.text}" for claim in accepted
-            )
-        else:
-            answerability = Answerability.INSUFFICIENT
-            answer = "C 草稿中的主张均未通过自动 Claim—Evidence Judge 门控，因此不保留科学结论。"
-        review = GeneratedReview(
-            answerability=answerability,
-            answer=answer,
-            claims=accepted,
-            limitations=[
-                *c_artifact.review.limitations,
-                "D 是自动 Hy3 Judge 门控，不是专家复核。",
-                f"门控保留 {len(accepted)}/{len(c_artifact.review.claims)} 条主张。",
-            ],
+            judge_calls.append(call_provenance)
+        review, warnings = derive_d_review_and_warnings(
+            c_artifact,
+            gates,
+            judge_k=self.claim_gate.k,
         )
         return AblationCellArtifact(
             arm=PilotArm.D,
@@ -769,17 +1708,24 @@ class PilotAblationRunner:
             retrieval=c_artifact.retrieval,
             review=review,
             model_calls=c_artifact.model_calls,
+            generator_provenance=c_artifact.generator_provenance,
             claim_gates=gates,
-            parent_c_artifact_sha256=_sha_model(c_artifact),
-            warnings=[
-                *c_artifact.warnings,
-                "D 未追加检索，且输出是通过 gate 的 C 主张确定性渲染。",
-                (
-                    "D Pilot Judge k=1，仅为单次自动门控，不是自一致性稳定性实验。"
-                    if self.claim_gate.k == 1
-                    else f"D Judge 使用自一致性 k={self.claim_gate.k}。"
+            judge_provenance=JudgeProvenance(
+                **self.claim_gate.provenance_identity.model_dump(mode="python"),
+                execution_status=(
+                    "no_claims_no_request"
+                    if not judge_calls
+                    else (
+                        "remote_invoked"
+                        if self.claim_gate.provenance_identity.execution_kind
+                        == "remote_hy3"
+                        else "test_fixture_invoked"
+                    )
                 ),
-            ],
+                calls=judge_calls,
+            ),
+            parent_c_artifact_sha256=_sha_model(c_artifact),
+            warnings=warnings,
         )
 
     @staticmethod
@@ -787,6 +1733,25 @@ class PilotAblationRunner:
         suite_dir: Path,
         artifact: AblationCellArtifact,
     ) -> AblationCellRecord:
+        artifact_payload = artifact.model_dump(mode="json")
+        review_payload = artifact.review.model_dump(mode="json")
+        passage_payloads = [
+            passage.model_dump(mode="json") for passage in artifact.passages
+        ]
+        gate_payloads = [
+            gate.model_dump(mode="json") for gate in artifact.claim_gates
+        ]
+        # Successful model/evidence text is untrusted too.  Refuse the entire
+        # cell before creating its directory if any serialized payload would
+        # be changed by the shared credential/private-reasoning sanitizer.
+        # Scientific text is never silently rewritten.
+        for payload in (
+            artifact_payload,
+            review_payload,
+            passage_payloads,
+            gate_payloads,
+        ):
+            assert_json_safe(payload)
         relative = Path(_safe_id(artifact.question_id)) / f"replicate-{artifact.replicate:02d}" / artifact.arm.value
         final_dir = suite_dir / relative
         if final_dir.exists():
@@ -795,31 +1760,31 @@ class PilotAblationRunner:
         temporary = Path(tempfile.mkdtemp(prefix=f".{artifact.arm.value}-", dir=final_dir.parent))
         try:
             files = {
-                "artifact.json": _json_bytes(artifact.model_dump(mode="json")),
-                "review.json": _json_bytes(artifact.review.model_dump(mode="json")),
+                "artifact.json": _json_bytes(artifact_payload),
+                "review.json": _json_bytes(review_payload),
                 "retrieval.jsonl": b"".join(
                     json.dumps(
-                        passage.model_dump(mode="json"),
+                        passage,
                         ensure_ascii=False,
                         sort_keys=True,
                     ).encode("utf-8")
                     + b"\n"
-                    for passage in artifact.passages
+                    for passage in passage_payloads
                 ),
                 "claim_gates.jsonl": b"".join(
                     json.dumps(
-                        gate.model_dump(mode="json"),
+                        gate,
                         ensure_ascii=False,
                         sort_keys=True,
                     ).encode("utf-8")
                     + b"\n"
-                    for gate in artifact.claim_gates
+                    for gate in gate_payloads
                 ),
             }
             for name, data in files.items():
                 (temporary / name).write_bytes(data)
             manifest = {
-                "schema_version": ABLATION_ARTIFACT_VERSION,
+                "schema_version": artifact.schema_version,
                 "question_id": artifact.question_id,
                 "replicate": artifact.replicate,
                 "arm": artifact.arm.value,
@@ -833,6 +1798,7 @@ class PilotAblationRunner:
                     "contains_reasoning_content": False,
                 },
             }
+            assert_json_safe(manifest)
             manifest_data = _json_bytes(manifest)
             (temporary / "manifest.json").write_bytes(manifest_data)
             os.replace(temporary, final_dir)
@@ -861,6 +1827,7 @@ class PilotAblationRunner:
         replicate: int,
         arm: PilotArm,
         exc: BaseException,
+        schema_version: str = ABLATION_ARTIFACT_VERSION,
     ) -> AblationCellRecord:
         relative = Path(_safe_id(question_id)) / f"replicate-{replicate:02d}" / arm.value
         final_dir = suite_dir / relative
@@ -868,23 +1835,25 @@ class PilotAblationRunner:
             raise FileExistsError(f"failure cell 目录已存在：{relative}")
         final_dir.parent.mkdir(parents=True, exist_ok=True)
         final_dir.mkdir()
-        failure_type = type(exc).__name__
-        failure_reason = str(exc) or repr(exc)
-        _write_atomic(
-            final_dir / "failure.json",
-            _json_bytes(
-                {
-                    "schema_version": ABLATION_ARTIFACT_VERSION,
+        failure_type = sanitize_failure_text(type(exc).__name__, max_chars=120)
+        failure_reason = sanitize_failure_text(str(exc) or repr(exc))
+        failure_payload = {
+                    "schema_version": schema_version,
                     "question_id": question_id,
                     "replicate": replicate,
                     "arm": arm.value,
                     "outcome": "failed",
                     "failure_type": failure_type,
                     "failure_reason": failure_reason,
-                    "security": {"contains_api_key": False},
+                    "security": {
+                        "contains_api_key": False,
+                        "contains_reasoning_content": False,
+                        "failure_text_sanitized": True,
+                        "redaction_policy": FAILURE_REDACTION_POLICY,
+                    },
                 }
-            ),
-        )
+        assert_json_safe(failure_payload)
+        _write_atomic(final_dir / "failure.json", _json_bytes(failure_payload))
         return AblationCellRecord(
             question_id=question_id,
             replicate=replicate,
@@ -897,9 +1866,11 @@ class PilotAblationRunner:
 
     @staticmethod
     def _write_state(suite_dir: Path, state: PilotAblationSuiteState) -> None:
+        payload = state.model_dump(mode="json")
+        assert_json_safe(payload)
         _write_atomic(
             suite_dir / "suite_state.json",
-            _json_bytes(state.model_dump(mode="json")),
+            _json_bytes(payload),
         )
 
     def run_suite(
@@ -910,7 +1881,13 @@ class PilotAblationRunner:
         out_root: str | Path,
         suite_id: str,
         input_path: str | Path,
+        resume: bool = False,
     ) -> tuple[Path, PilotAblationSuiteState]:
+        if resume:
+            raise RuntimeError(
+                "严格 --resume 尚未实现：为避免把不同模型、配置、输入或 Judge "
+                "策略混入同一 suite，本 runner 拒绝恢复；请使用新的 suite_id 重跑"
+            )
         if replicates <= 0:
             raise ValueError("replicates 必须为正整数")
         question_ids = [request.question_id for request in requests]
@@ -937,6 +1914,18 @@ class PilotAblationRunner:
         input_file = Path(input_path).resolve()
         _validate_neutral_input_snapshot(input_file, requests)
         suite_dir.mkdir()
+        # Keep byte-identical source snapshots beside the journal.  The
+        # declared paths remain unchanged (and are still written into every
+        # cell), while downstream formal scoring can recompute both hashes
+        # even if the original invocation used a path outside repo_root.
+        _write_atomic(
+            suite_dir / SUITE_INPUT_SNAPSHOT_COPY,
+            input_file.read_bytes(),
+        )
+        _write_atomic(
+            suite_dir / SUITE_EVIDENCE_MANIFEST_COPY,
+            self.corpus.manifest_path.read_bytes(),
+        )
         try:
             input_label = str(input_file.relative_to(self.corpus.repo_root))
         except ValueError:
@@ -957,6 +1946,8 @@ class PilotAblationRunner:
             replicates=replicates,
             top_k=self.top_k,
             judge_k=self.claim_gate.k,
+            generator_provenance=self.generator_provenance,
+            judge_provenance_identity=self.claim_gate.provenance_identity,
             expected_grid_cells=len(requests) * replicates * len(PilotArm),
             records=[],
         )
@@ -968,7 +1959,25 @@ class PilotAblationRunner:
             plan: SearchPlan | None = None
             plan_audit: ModelCallAudit | None = None
             try:
-                plan, plan_audit = self.model.plan(request)
+                plan_seed = derive_generator_seed(
+                    self.generator_provenance.base_seed,
+                    request.question_id,
+                    0,
+                    "shared",
+                    "plan",
+                )
+                plan_namespace = generator_cache_namespace(
+                    self.generator_provenance.cache_namespace,
+                    request.question_id,
+                    0,
+                    "shared",
+                    "plan",
+                )
+                plan, plan_audit = self.model.plan(
+                    request,
+                    seed=plan_seed,
+                    cache_namespace=plan_namespace,
+                )
                 _write_atomic(
                     suite_dir / _safe_id(request.question_id) / "shared_plan.json",
                     _json_bytes(
@@ -981,7 +1990,9 @@ class PilotAblationRunner:
                     ),
                 )
             except Exception as exc:  # noqa: BLE001 - retained in every dependent cell
-                planning_failures[request.question_id] = f"{type(exc).__name__}: {exc}"
+                planning_failures[request.question_id] = sanitize_failure_text(
+                    f"{type(exc).__name__}: {exc}"
+                )
 
             for replicate in range(1, replicates + 1):
                 try:
@@ -1077,9 +2088,12 @@ class PilotAblationRunner:
         # model_copy(update=...) intentionally avoids repeated validation while
         # journaling, so enforce the completed-grid invariant once at closure.
         state = PilotAblationSuiteState.model_validate(state.model_dump(mode="json"))
-        self._write_state(suite_dir, state)
-        _write_atomic(
-            suite_dir / "suite_summary.json",
-            _json_bytes(state.model_dump(mode="json")),
-        )
+        final_state_payload = state.model_dump(mode="json")
+        assert_json_safe(final_state_payload)
+        final_state_bytes = _json_bytes(final_state_payload)
+        # Both journals are authenticated by their byte identity.  Serialize
+        # once so a future serializer change cannot create a semantic-equal
+        # but byte-different summary.
+        _write_atomic(suite_dir / "suite_state.json", final_state_bytes)
+        _write_atomic(suite_dir / "suite_summary.json", final_state_bytes)
         return suite_dir, state

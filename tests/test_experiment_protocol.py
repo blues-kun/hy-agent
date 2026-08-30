@@ -10,7 +10,17 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from app.ablation import (
+    ARM_DEFINITIONS,
+    GeneratorProvenance,
+    InputSnapshot,
+    JudgeProvenanceIdentity,
+    PilotAblationSuiteState,
+    SuiteStatus,
+)
 from evaluator.experiment_protocol import (
+    ABLATION_RUNTIME_SCHEMA_VERSIONS,
+    ABLATION_SCHEMA_VERSION,
     AblationInput,
     AblationRunRecord,
     ExpertConcordanceInput,
@@ -130,6 +140,87 @@ def test_preflight_blocks_real_run_on_missing_key_and_corpus_drift(tmp_path: Pat
     failures = {check.code for check in pilot.checks if not check.passed}
     assert failures == {"HY3_API_KEY_PRESENT", "FROZEN_CORPUS_INTEGRITY"}
     assert pilot.next_command is None
+
+
+@pytest.mark.parametrize("schema_version", ABLATION_RUNTIME_SCHEMA_VERSIONS)
+def test_preflight_accepts_runtime_ablation_state_without_legacy_projection(
+    tmp_path: Path,
+    schema_version: str,
+):
+    root = _fixture_repo(tmp_path)
+    v3_provenance = (
+        {
+            "generator_provenance": GeneratorProvenance(
+                execution_kind="test_fixture",
+                provider="test-fixture",
+                model="fake-hy3",
+                endpoint_origin="https://fixture.invalid",
+                endpoint_url="https://fixture.invalid/v1/chat/completions",
+                config_sha256=ZERO_HASH,
+                base_seed=101,
+                cache_namespace="mitoevidence-fixture-v3",
+            ),
+            "judge_provenance_identity": JudgeProvenanceIdentity(
+                execution_kind="test_fixture",
+                provider="test-fixture",
+                model="fake-judge",
+                endpoint_origin="https://fixture.invalid",
+                endpoint_url="https://fixture.invalid/v1/chat/completions",
+                config_sha256=ZERO_HASH,
+                config_hash_scope="source_file_bytes",
+                schema_sha256=ZERO_HASH,
+                prompt_template_sha256=ZERO_HASH,
+                structured_output_channel="function_calling",
+                k=1,
+                temperature=0.7,
+                base_seed=202,
+                min_agreement_votes=1,
+                escalate_on_refuted=True,
+            ),
+        }
+        if schema_version == "mitoevidence.pilot-ablation.v3"
+        else {}
+    )
+    state = PilotAblationSuiteState(
+        schema_version=schema_version,
+        suite_id="runtime-preflight",
+        status=SuiteStatus.RUNNING,
+        created_at_utc="2026-08-31T00:00:00+00:00",
+        input_snapshot=InputSnapshot(
+            path="pilot.jsonl",
+            sha256=ZERO_HASH,
+            question_ids=["q1"],
+        ),
+        evidence_manifest_path="eval/data/evidence_pool_manifest.json",
+        evidence_manifest_sha256=hashlib.sha256(
+            (root / "eval/data/evidence_pool_manifest.json").read_bytes()
+        ).hexdigest(),
+        arm_definitions=list(ARM_DEFINITIONS),
+        replicates=1,
+        top_k=2,
+        judge_k=1,
+        expected_grid_cells=4,
+        records=[],
+        **v3_provenance,
+    )
+    source = tmp_path / f"suite-state-{schema_version.rsplit('.', 1)[-1]}.json"
+    source.write_text(state.model_dump_json(), encoding="utf-8")
+    report = build_experiment_preflight(
+        root,
+        environment={"HY3_API_KEY": "present-but-never-rendered"},
+        expert_reference_paths=[
+            "annotation_prelabel/pilot_questions/pilot_5_questions.jsonl"
+        ],
+        ablation_input=source,
+    )
+    checks = {
+        check.code: check
+        for check in _stages(report)[ExperimentStage.ABLATION_ABCD].checks
+    }
+    assert checks["ABLATION_GRID_INPUT"].passed is True
+    assert schema_version in checks["ABLATION_GRID_INPUT"].detail
+    assert checks["ABLATION_GRID_COMPLETE"].passed is False
+    assert f"input_schema={schema_version}" in checks["ABLATION_GRID_COMPLETE"].detail
 
 
 def test_single_expert_concordance_is_role_explicit_and_hand_checkable():
@@ -334,7 +425,12 @@ def test_preflight_cli_prints_all_strict_input_schemas():
     schemas = json.loads(completed.stdout)
     assert set(schemas) == {"expert_concordance", "validation", "ablation"}
     assert schemas["expert_concordance"]["additionalProperties"] is False
-    assert schemas["ablation"]["additionalProperties"] is False
+    supported = schemas["ablation"]["supported_input_schemas"]
+    assert set(supported) == {
+        ABLATION_SCHEMA_VERSION,
+        *ABLATION_RUNTIME_SCHEMA_VERSIONS,
+    }
+    assert all(schema["additionalProperties"] is False for schema in supported.values())
 
 
 def test_expert_concordance_cli_writes_role_explicit_result(tmp_path: Path):
@@ -397,6 +493,7 @@ def test_ablation_grid_cli_returns_two_only_for_missing_cells(tmp_path: Path):
     )
     assert completed.returncode == 2
     result = json.loads(target.read_text(encoding="utf-8"))
+    assert result["input_schema"] == "mitoevidence.ablation.v1"
     assert result["recorded_grid_cells"] == 1
     assert result["expected_grid_cells"] == 4
     assert result["missing_grid_cells"] == 3
