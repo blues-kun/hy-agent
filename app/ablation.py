@@ -715,7 +715,7 @@ class AblationCellArtifact(StrictModel):
                 self.schema_version != LEGACY_ABLATION_ARTIFACT_VERSION
                 and self.judge_provenance is None
             ):
-                raise ValueError("v2/v3 Arm D 必须保存可审计 Judge provenance")
+                raise ValueError("v2/v3/v4 Arm D 必须保存可审计 Judge provenance")
             if self.judge_provenance is None:
                 return self
             if (
@@ -798,7 +798,7 @@ class AblationCellArtifact(StrictModel):
                         gate.claim_id,
                     )
                     if call.derived_base_seed != expected_derived:
-                        raise ValueError("v3 Judge derived_base_seed 不符合冻结派生策略")
+                        raise ValueError("formal Judge derived_base_seed 不符合冻结派生策略")
                 expected_seeds = (
                     [None] * self.judge_provenance.k
                     if effective_base_seed is None
@@ -1110,7 +1110,7 @@ class AblationReviewModel(Protocol):
         request: ReviewRequest,
         *,
         seed: int | None = None,
-        cache_namespace: str = "mitoevidence-ablation-v3",
+        cache_namespace: str = "mitoevidence-ablation-v4",
     ) -> tuple[SearchPlan, ModelCallAudit]: ...
 
     def synthesize(
@@ -1119,7 +1119,7 @@ class AblationReviewModel(Protocol):
         passages: list[CorpusPassage],
         *,
         seed: int | None = None,
-        cache_namespace: str = "mitoevidence-ablation-v3",
+        cache_namespace: str = "mitoevidence-ablation-v4",
     ) -> tuple[GeneratedReview, ModelCallAudit]: ...
 
     def synthesize_direct(
@@ -1127,7 +1127,7 @@ class AblationReviewModel(Protocol):
         request: ReviewRequest,
         *,
         seed: int | None = None,
-        cache_namespace: str = "mitoevidence-ablation-v3",
+        cache_namespace: str = "mitoevidence-ablation-v4",
     ) -> tuple[GeneratedReview, ModelCallAudit]: ...
 
 

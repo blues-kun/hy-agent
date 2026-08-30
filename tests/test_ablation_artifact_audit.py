@@ -50,6 +50,8 @@ from app.hy3_review import (
 )
 from evaluator.ablation_artifacts import (
     ARTIFACT_AUDIT_SCHEMA_VERSION,
+    GENERATOR_FORMAL_BINDING_CHECK,
+    GENERATOR_V3_BINDING_CHECK_DEPRECATED_ALIAS,
     CellManifest,
     FailureArtifact,
     _cross_arm_checks,
@@ -453,6 +455,51 @@ def test_valid_success_suite_passes_file_and_cross_arm_audit(tmp_path: Path):
     }
     assert all(cell["ok"] for cell in result["cell_results"])
     assert all(check["ok"] for check in result["cross_arm_checks"])
+    top_level = result["top_level_files"]
+    assert (
+        top_level["formal_schema_snapshots_required"]
+        == top_level["formal_v3_snapshots_required"]
+    )
+    assert top_level["deprecated_aliases"]["formal_v3_snapshots_required"] == {
+        "deprecated": True,
+        "replacement": "formal_schema_snapshots_required",
+    }
+
+
+def test_generator_binding_check_has_formal_name_and_deprecated_v3_alias(
+    tmp_path: Path,
+):
+    suite, state = _suite(tmp_path)
+    artifacts = {
+        (record.question_id, record.replicate, record.arm): AblationCellArtifact.model_validate_json(
+            (suite / record.cell_dir / "artifact.json").read_bytes()
+        )
+        for record in state.records
+        if record.outcome.value == "succeeded"
+    }
+    checks, _identity, _nonformal = _generator_identity_checks(
+        state,
+        artifacts,
+        allow_test_fixture=True,
+    )
+    canonical = [
+        row for row in checks if row["check"] == GENERATOR_FORMAL_BINDING_CHECK
+    ]
+    aliases = [
+        row
+        for row in checks
+        if row["check"] == GENERATOR_V3_BINDING_CHECK_DEPRECATED_ALIAS
+    ]
+    assert canonical
+    assert len(canonical) == len(aliases)
+    for current, legacy in zip(canonical, aliases, strict=True):
+        assert current["scope"] == legacy["scope"]
+        assert current["ok"] == legacy["ok"]
+        assert current["deprecated_aliases"] == [
+            GENERATOR_V3_BINDING_CHECK_DEPRECATED_ALIAS
+        ]
+        assert legacy["deprecated"] is True
+        assert legacy["alias_for"] == GENERATOR_FORMAL_BINDING_CHECK
 
 
 def test_explicit_failed_cell_is_valid_when_failure_json_matches(tmp_path: Path):

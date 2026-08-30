@@ -148,7 +148,11 @@ def test_preflight_accepts_runtime_ablation_state_without_legacy_projection(
     schema_version: str,
 ):
     root = _fixture_repo(tmp_path)
-    v3_provenance = (
+    formal_runtime_schema = schema_version in {
+        "mitoevidence.pilot-ablation.v3",
+        "mitoevidence.pilot-ablation.v4",
+    }
+    formal_provenance = (
         {
             "generator_provenance": GeneratorProvenance(
                 execution_kind="test_fixture",
@@ -158,7 +162,9 @@ def test_preflight_accepts_runtime_ablation_state_without_legacy_projection(
                 endpoint_url="https://fixture.invalid/v1/chat/completions",
                 config_sha256=ZERO_HASH,
                 base_seed=101,
-                cache_namespace="mitoevidence-fixture-v3",
+                cache_namespace=(
+                    f"mitoevidence-fixture-{schema_version.rsplit('.', 1)[-1]}"
+                ),
             ),
             "judge_provenance_identity": JudgeProvenanceIdentity(
                 execution_kind="test_fixture",
@@ -178,7 +184,7 @@ def test_preflight_accepts_runtime_ablation_state_without_legacy_projection(
                 escalate_on_refuted=True,
             ),
         }
-        if schema_version == "mitoevidence.pilot-ablation.v3"
+        if formal_runtime_schema
         else {}
     )
     state = PilotAblationSuiteState(
@@ -201,7 +207,7 @@ def test_preflight_accepts_runtime_ablation_state_without_legacy_projection(
         judge_k=1,
         expected_grid_cells=4,
         records=[],
-        **v3_provenance,
+        **formal_provenance,
     )
     source = tmp_path / f"suite-state-{schema_version.rsplit('.', 1)[-1]}.json"
     source.write_text(state.model_dump_json(), encoding="utf-8")
@@ -213,14 +219,21 @@ def test_preflight_accepts_runtime_ablation_state_without_legacy_projection(
         ],
         ablation_input=source,
     )
+    ablation_stage = _stages(report)[ExperimentStage.ABLATION_ABCD]
     checks = {
         check.code: check
-        for check in _stages(report)[ExperimentStage.ABLATION_ABCD].checks
+        for check in ablation_stage.checks
     }
+    assert ablation_stage.status is ReadinessStatus.READY
     assert checks["ABLATION_GRID_INPUT"].passed is True
     assert schema_version in checks["ABLATION_GRID_INPUT"].detail
     assert checks["ABLATION_GRID_COMPLETE"].passed is False
     assert f"input_schema={schema_version}" in checks["ABLATION_GRID_COMPLETE"].detail
+    loaded = PilotAblationSuiteState.model_validate_json(
+        source.read_text(encoding="utf-8")
+    )
+    assert (loaded.generator_provenance is not None) is formal_runtime_schema
+    assert (loaded.judge_provenance_identity is not None) is formal_runtime_schema
 
 
 def test_single_expert_concordance_is_role_explicit_and_hand_checkable():

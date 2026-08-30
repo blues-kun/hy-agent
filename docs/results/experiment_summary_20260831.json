@@ -53,6 +53,113 @@
       "structural_audit_ok": true,
       "production_ready": false,
       "interpretation": "legacy_v2_structural_only_nonformal"
+    },
+    "pilot_ablation_v3_protocol_diagnostic": {
+      "planned_cells": 60,
+      "recorded_before_stop": 8,
+      "failed_cells": 8,
+      "suite_finalized": false,
+      "generator_policy_failures": 6,
+      "dependent_d_failures": 2,
+      "interpretation": "stopped_protocol_mismatch_attempt_count_gt_1_rejected_not_used_for_effect_estimation"
+    },
+    "pilot_ablation_v4_formal": {
+      "suite_id": "pilot-abcd-hy3-v4-formal-r1-20260831",
+      "git_commit": "05adb6a1cefb5bcd14a93832f34e4f891a2037c7",
+      "schema_version": "mitoevidence.pilot-ablation.v4",
+      "questions": 5,
+      "replicates": 3,
+      "arms": 4,
+      "planned_cells": 60,
+      "succeeded_cells": 60,
+      "failed_cells": 0,
+      "elapsed_seconds": 13227,
+      "artifact_errors": 0,
+      "production_ready": true,
+      "generator_unique_calls": 50,
+      "generator_one_shot_calls": 25,
+      "generator_repaired_calls": 25,
+      "generator_attempt_histogram": {
+        "1": 25,
+        "2": 24,
+        "3": 1,
+        "4": 0
+      },
+      "generator_one_shot_by_workload": {
+        "shared_plan": "5/5",
+        "A_direct": "2/15",
+        "B_synthesis": "9/15",
+        "C_synthesis": "9/15"
+      },
+      "judge_gated_claims": 76,
+      "judge_logical_samples": 532,
+      "judge_valid_samples": 528,
+      "judge_actual_requests": 573,
+      "judge_passed_claims": 47,
+      "judge_escalated_claims": 7,
+      "judge_verdict_counts": {
+        "fully_supported": 37,
+        "partially_supported": 15,
+        "not_supported": 22,
+        "refuted": 1,
+        "unknown": 1
+      },
+      "token_usage": {
+        "generator": {
+          "prompt": 291782,
+          "completion": 284376,
+          "reasoning": 224047,
+          "cached": 75520
+        },
+        "judge": {
+          "prompt": 1007447,
+          "completion": 1134344,
+          "reasoning": 1060638,
+          "cached": 773696
+        }
+      },
+      "answerability_system_vs_expert_consensus": {
+        "A": {
+          "n": 15,
+          "raw_agreement": 0.6,
+          "wilson_95_ci": [0.357, 0.802],
+          "cohen_kappa": 0.4117647058823529,
+          "repeat_pairwise_agreement": 0.8
+        },
+        "B": {
+          "n": 15,
+          "raw_agreement": 0.6666666666666666,
+          "wilson_95_ci": [0.417, 0.848],
+          "cohen_kappa": 0.49999999999999994,
+          "repeat_pairwise_agreement": 0.7333333333333333
+        },
+        "C": {
+          "n": 15,
+          "raw_agreement": 0.4666666666666667,
+          "wilson_95_ci": [0.248, 0.699],
+          "cohen_kappa": 0.2857142857142857,
+          "repeat_pairwise_agreement": 0.7333333333333333
+        },
+        "D": {
+          "n": 15,
+          "raw_agreement": 0.7333333333333333,
+          "wilson_95_ci": [0.48, 0.891],
+          "cohen_kappa": 0.5833333333333333,
+          "repeat_pairwise_agreement": 0.8666666666666667
+        }
+      },
+      "paired_exact_mcnemar_p": {
+        "D_vs_A": 0.5,
+        "D_vs_B": 1.0,
+        "D_vs_C": 0.125
+      },
+      "state_and_summary_sha256": "978d179eb58a496592849faec734ac13d024af4113ec35c3eb0ecc12ffc796b3",
+      "input_snapshot_sha256": "61bc1ed4605ddeb63d14f9a8842533f166f2a097ec35c5041572205277f76820",
+      "evidence_manifest_snapshot_sha256": "215110ef9e81108d6a000957631719e3beb9e086aa67a09bd8ee98b7f1089c0a",
+      "artifact_audit_sha256": "c2e32ef29e3d3f47ef6e4c530124c6105af40160ccdb67204445ef2cf44092ae",
+      "answerability_concordance_input_sha256": "3965f6e5fc54a9ad6b51ad24906bd1b1b7c15c7143340dd96a1b2eea4e2a8b19",
+      "answerability_concordance_sha256": "dcfa8a334fb948c57a5a08342a661082b8db146eb601ca178290eb6544968ca9",
+      "interpretation": "formal_artifact_audit_and_system_vs_single_expert_consensus_answerability_pilot_not_full_D1_D9_scoring"
     }
   },
   "boundaries": [
@@ -60,6 +167,8 @@
     "Terminology pairs do not test full-text claim-evidence support.",
     "Claim-admission performance is insufficient for an automatic exclusion gate.",
     "A/B/C/D v2 is not a formal production-ready ablation result.",
+    "A/B/C/D v4 is production-ready at the artifact-audit level, but the five-question answerability comparison is too small for a superiority claim.",
+    "Bounded Generator repair is part of v4; repair traces and raw provider responses are intentionally not retained.",
     "Raw results, copyrighted full text and credentials are intentionally not committed."
   ]
 }

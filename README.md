@@ -6,7 +6,7 @@
 
 ![Model](https://img.shields.io/badge/MODEL-Hy3-111111?style=flat-square)
 ![Version](https://img.shields.io/badge/MVP-v0.3.1-555555?style=flat-square)
-![Tests](https://img.shields.io/badge/TESTS-580%20PASSING-111111?style=flat-square)
+![Tests](https://img.shields.io/badge/TESTS-582%20PASSING-111111?style=flat-square)
 ![Gold](https://img.shields.io/badge/EXPERT%20GOLD-127-555555?style=flat-square)
 [![Mito Agent](https://img.shields.io/badge/MITO--AGENT-DEPLOYED-111111?style=flat-square)](https://agent.blueskun.com:8444/)
 
@@ -46,13 +46,13 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 | 项目 | 已完成状态 | 证据入口 |
 |---|---|---|
 | 应用闭环 | Hy3 MVP `v0.3.1`；真实五题 Pilot 完成 `5/5` | `app/`、`scripts/run_pilot_suite.py` |
-| 专家参考 | 127 条项目方确认的**单一专家共识金标**；原始快照、字段 designation 与逐文件哈希可审计 | `annotation_prelabel/expert_gold_manifest.json`、`evaluator/expert_gold.py` |
+| 专家参考 | 127 条项目负责人确认的**单一专家共识金标**；原始快照、字段 designation 与逐文件哈希可审计 | `annotation_prelabel/expert_gold_manifest.json`、`evaluator/expert_gold.py` |
 | 评测框架 | D1–D9、NA 重归一、四类致命错误上限、PASS/REVIEW/REJECT | `evaluator/rubric.py`、`evaluator/assembly.py` |
 | Hy3 Judge | Function Calling、JSON Schema 备选、本地校验、自一致性与升级队列 | `evaluator/judge/` |
 | 真实有效性 Pilot | 术语正误对 180/180 次、Claim 准入 50/50 次真实 Hy3 调用完成 | `app/terminology_pair_pilot.py`、`app/claim_admission_pilot.py` |
-| A/B/C/D 消融 | v4 固定生成/Judge身份、seed、有界结构修复、缓存命名空间、顶层快照、跨组绑定与敏感信息审计 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
+| A/B/C/D 消融 | 正式 v4 共 60/60 cells 完成并通过独立产物审计，`production_ready=true`；D 组 answerability 11/15（0.7333），κ=0.5833 | `app/ablation.py`、`evaluator/ablation_artifacts.py`、`docs/experiment_results_20260831.md` |
 | 实验协议 | 系统—专家参考一致度、判别力、稳定性、对抗性与消融审计入口已实现 | `evaluator/experiment_protocol.py` |
-| 工程验证 | Python 3.11 下 580 项离线测试通过 | `tests/` |
+| 工程验证 | Python 3.11 下 582 项离线测试通过 | `tests/` |
 
 127 条金标来自四类任务，不能当作 127 个同构评分样本混算：
 
@@ -64,7 +64,7 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 | 综述池评估 | 12 | 共 2,043 条参考文献；7 篇有本地 XML 与冻结哈希 |
 
 原始 JSONL 中的 `ai_*`、`annotator`、`review_status` 等历史字段保持原样；仓库通过独立
-manifest 记录项目方确认的 `expert_consensus_gold` designation，不静默改写来源快照。
+manifest 记录项目负责人确认的 `expert_consensus_gold` designation，不静默改写来源快照。
 
 ### 五题真实 Hy3 Pilot
 
@@ -93,6 +93,24 @@ manifest 记录项目方确认的 `expert_consensus_gold` designation，不静�
 两组都是实际 Hy3 结果，也都保留不理想指标。它们产生于旧 v1 artifact contract，分析器明确标为
 `legacy_v1_nonformal_limited_cell_provenance`，不会静默升级为新版完整逐调用证明。详细指标、
 偏差分析和 SHA-256 见 [`docs/experiment_results_20260831.md`](docs/experiment_results_20260831.md)。
+
+### 正式 A/B/C/D v4 消融
+
+正式套件 `pilot-abcd-hy3-v4-formal-r1-20260831` 使用 5 道专家金标问题、每题 3 次重复和
+4 个实验组，共 **60/60 cells 成功**；输入与证据快照、生成器/Judge 身份、seed、缓存命名空间、
+C→D 精确绑定及敏感信息复扫均通过，独立审计结论为 `production_ready=true`。
+
+| 组别 | answerability 一致 | Cohen's κ | 重复两两一致率 |
+|---|---:|---:|---:|
+| A 无检索 | 9/15（0.6000） | 0.4118 | 0.8000 |
+| B 稀疏检索 | 10/15（0.6667） | 0.5000 | 0.7333 |
+| C 证据图重排 | 7/15（0.4667） | 0.2857 | 0.7333 |
+| D 同一 C 草稿 + Judge 门控 | **11/15（0.7333）** | **0.5833** | **0.8667** |
+
+D 的点估计和重复稳定性最高，且三组配对比较均无“对照正确、D 错误”的记录；但样本仅
+15 对，D 对 A、B、C 的双侧精确 McNemar 检验分别为 `p=0.50`、`p=1.00`、`p=0.125`，
+均未达到统计显著，不能宣称 D 显著优于其他组。此前 v3 r3 运行因“只允许一次生成”与已冻结的
+有界 Schema 修复机制冲突，在 8/60 cells 后终止；它只保留为**实验协议诊断**，不并入性能比较。
 
 ## 3. 总体架构
 
@@ -148,9 +166,9 @@ manifest 记录项目方确认的 `expert_consensus_gold` designation，不静�
 
 runner 会记录每个 cell 的成功或失败，并要求 D 绑定精确的 C artifact hash。旧 v2 真实套件的
 20/20 cell 均结构完整且无审计错误，但因缺少完整逐调用身份，只能标为 nonformal。
-新 v4 只有在官方 Hy3 端点、非空 seed、输入/证据快照、成功/失败敏感信息复扫和全部跨组绑定
-同时通过时才可产生 `production_ready=true`。它把已冻结的有界结构修复纳入应用方法，分别报告
-一次通过与修复后完成情况；旧 v3 继续保持“仅一次通过”的历史语义。
+正式 v4 已在官方 Hy3 端点完成 60/60 cells，并在非空 seed、输入/证据快照、成功/失败敏感信息
+复扫和全部跨组绑定同时通过后得到 `production_ready=true`。它把已冻结的有界结构修复纳入应用
+方法，分别报告一次通过与修复后完成情况；v3 r3 仅作为协议冲突诊断，不作为消融结果。
 
 判别力、对抗性和稳定性同样按已落地协议运行。当前五题 Pilot 没有原文 EvidenceSpan，也没有
 输出级专家九维总分，因此不能补造完整 D2/D3 金标指标，亦不能报告自动总分对专家总分的
@@ -210,10 +228,11 @@ SUITE_ID=pilot-abcd-hy3-v4-$(date -u +%Y%m%dT%H%M%SZ)
 
 当前最准确的项目表述是：
 
-> **MitoEvidence-Hy3 已完成应用和评估工程闭环，以 127 条项目方确认的单一专家共识记录
-> 作为唯一参考，并跑通真实五题、术语正误对和 Claim 准入 Pilot。结果显示术语判别较强但存在
-> 长度偏差，Claim 四分类门禁表现不足；这些小样本结果不等价于大规模医学有效性验证，缺失的
-> 专家字段和专家间一致性不会被推断或补造。**
+> **MitoEvidence-Hy3 已完成应用和评估工程闭环，以 127 条项目负责人确认的单一专家共识金标
+> 作为唯一参考，并跑通真实五题、术语正误对、Claim 准入 Pilot 及 60/60 cells 的正式 v4
+> A/B/C/D 消融。D 组 answerability 点估计最高，但配对检验尚不显著；完整输出级 D1–D9
+> 好/中/差判别与 12 类完整对抗实验仍未完成。这些小样本结果不等价于大规模医学有效性验证，
+> 缺失的专家字段和专家间一致性不会被推断或补造。**
 
 ---
 

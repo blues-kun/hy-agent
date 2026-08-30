@@ -55,6 +55,12 @@ from evaluator.schemas import StrictModel
 
 
 ARTIFACT_AUDIT_SCHEMA_VERSION = "mitoevidence.pilot-ablation-artifact-audit.v4"
+GENERATOR_FORMAL_BINDING_CHECK = (
+    "GENERATOR_FORMAL_PROMPT_SCHEMA_SEED_BINDING"
+)
+GENERATOR_V3_BINDING_CHECK_DEPRECATED_ALIAS = (
+    "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING"
+)
 FORMAL_ABLATION_SCHEMA_VERSIONS = {
     ABLATION_ARTIFACT_VERSION_V3,
     ABLATION_ARTIFACT_VERSION,
@@ -325,8 +331,15 @@ def _audit_top_level_files(
         {
             "ok": not errors,
             "formal_schema_snapshots_required": snapshots_required,
-            # Backward-compatible output key retained through audit schema v4.
+            # Keep the old field for report consumers written against v3.  The
+            # adjacent metadata makes the migration path machine-readable.
             "formal_v3_snapshots_required": snapshots_required,
+            "deprecated_aliases": {
+                "formal_v3_snapshots_required": {
+                    "deprecated": True,
+                    "replacement": "formal_schema_snapshots_required",
+                }
+            },
             "files": files,
             "errors": errors,
         },
@@ -1034,6 +1047,32 @@ def _generator_identity_checks(
 ) -> tuple[list[dict[str, Any]], dict[str, str] | None, bool]:
     """Derive and verify generation identity from successful A/B/C cells."""
 
+    def append_formal_binding_check(payload: dict[str, Any]) -> None:
+        """Emit the schema-neutral check plus the deprecated v3 alias.
+
+        Some archived consumers select rows by the original ``check`` value.
+        Keeping a complete alias row avoids silently breaking those reports,
+        while new consumers can use the canonical formal name for both v3 and
+        v4 suites.
+        """
+
+        canonical = {
+            **payload,
+            "check": GENERATOR_FORMAL_BINDING_CHECK,
+            "deprecated_aliases": [
+                GENERATOR_V3_BINDING_CHECK_DEPRECATED_ALIAS
+            ],
+        }
+        checks.append(canonical)
+        checks.append(
+            {
+                **payload,
+                "check": GENERATOR_V3_BINDING_CHECK_DEPRECATED_ALIAS,
+                "deprecated": True,
+                "alias_for": GENERATOR_FORMAL_BINDING_CHECK,
+            }
+        )
+
     checks: list[dict[str, Any]] = []
     identities: list[tuple[str, str, str, str, str]] = []
     plan_calls: dict[str, list[ModelCallAudit]] = {}
@@ -1103,9 +1142,8 @@ def _generator_identity_checks(
             }
         )
         if not formal_schema:
-            checks.append(
+            append_formal_binding_check(
                 {
-                    "check": "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING",
                     "scope": f"{question_id}:replicate-{replicate:02d}:{arm.value}",
                     "ok": True,
                     "applicable": False,
@@ -1223,9 +1261,8 @@ def _generator_identity_checks(
                     "repair_trace_offline_reconstructable": False,
                 }
             )
-        checks.append(
+        append_formal_binding_check(
             {
-                "check": "GENERATOR_V3_PROMPT_SCHEMA_SEED_BINDING",
                 "scope": f"{question_id}:replicate-{replicate:02d}:{arm.value}",
                 "ok": provenance_ok and all(row["ok"] for row in per_call),
                 "applicable": True,
