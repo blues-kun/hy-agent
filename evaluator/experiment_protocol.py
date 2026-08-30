@@ -51,6 +51,7 @@ ABLATION_RUNTIME_SCHEMA_VERSIONS = (
     "mitoevidence.pilot-ablation.v1",
     "mitoevidence.pilot-ablation.v2",
     "mitoevidence.pilot-ablation.v3",
+    "mitoevidence.pilot-ablation.v4",
 )
 
 FORMAL_DISCRIMINATION_PER_TIER = 20
