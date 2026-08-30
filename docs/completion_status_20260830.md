@@ -13,9 +13,9 @@
 | 九维评估 | D1–D9、NA、事件上限、四类致命错误与 PASS/REVIEW/REJECT | `evaluator/`、`configs/rubric_v0_1.yaml` |
 | 真实术语实验 | 60 对 × 3 次，180/180 成功；多数票 58/60，重复两两一致率 96.67% | `app/terminology_pair_pilot.py`、结果报告 |
 | 真实 Claim 实验 | 50/50 成功；四分类准确率 0.32、κ=0.0357，暴露自动准入能力不足 | `app/claim_admission_pilot.py`、结果报告 |
-| A/B/C/D | A 无检索、B 稀疏 TF-IDF、C 冻结证据图、D 同一 C 草稿的 Judge 门控；v3 固定完整执行身份、seed、缓存命名空间与跨组绑定 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
+| A/B/C/D | A 无检索、B 稀疏 TF-IDF、C 冻结证据图、D 同一 C 草稿的 Judge 门控；v4 固定完整执行身份、seed、有界结构修复、缓存命名空间与跨组绑定 | `app/ablation.py`、`evaluator/ablation_artifacts.py` |
 | 安全与可追溯 | 成功/失败产物独立敏感信息扫描，顶层与 cell 快照审计，路径/软链接逃逸防护，旧格式显式降级 | `evaluator/artifact_security.py`、`evaluator/pilot_identity.py` |
-| 工程回归 | Python 3.11 下 564 项离线测试通过 | `tests/` |
+| 工程回归 | Python 3.11 下 580 项离线测试通过 | `tests/` |
 
 完整指标、哈希和解释边界见
 [`experiment_results_20260831.md`](experiment_results_20260831.md)。
@@ -42,24 +42,25 @@
 术语和 Claim 是真实 Hy3 运行，但使用旧 v1 artifact contract。分析器保留兼容并明确标为
 `legacy_v1_nonformal_limited_cell_provenance`；不会静默把旧结果升级为完整可复现证明。
 
-## 4. v3 发布门禁
+## 4. v4 发布门禁
 
 新 A/B/C/D 只有同时满足以下条件才可标记 `production_ready=true`：
 
 1. model 精确为 `hy3`，provider 为 Tencent TokenHub，端点是已确认的官方 HTTPS 主机；
 2. generator 和 Judge 均记录完整无凭据 endpoint、配置、prompt/schema/output hash、temperature、
    非空 base seed、逐 cell/sample 派生 seed 和唯一缓存命名空间；
-3. `suite_state.json` 与 `suite_summary.json` 字节一致，输入和证据快照存在、非软链接且哈希一致；
-4. D 精确绑定同一 C 的请求、计划、检索、passage、草稿和 Claim；
-5. 成功与失败文件都通过写入前检查和审计器独立复扫；
-6. 实验输入与专家 manifest 中的 Pilot 数据集逐项一致。
+3. generator 的最多尝试次数由配置冻结；同时报告一次通过率与有界修复后的完成率；
+4. `suite_state.json` 与 `suite_summary.json` 字节一致，输入和证据快照存在、非软链接且哈希一致；
+5. D 精确绑定同一 C 的请求、计划、检索、passage、草稿和 Claim；
+6. 成功与失败文件都通过写入前检查和审计器独立复扫；
+7. 实验输入与专家 manifest 中的 Pilot 数据集逐项一致。
 
 自定义 OpenAI 兼容端点、其他模型、离线 fixture 和 v1/v2 旧格式仍可用于工程调试，但自动
 降级为 nonformal，不能通过修改产物中的自由文字冒充正式实验。
 
 ## 5. 尚未完成
 
-1. A/B/C/D v3 的真实多重复运行、题级效应量与置信区间；
+1. A/B/C/D v4 的真实多重复运行、题级效应量与置信区间；
 2. 输出级专家 D1–D9 分数并不存在，因而完整自动分—专家分相关与 ICC 不能计算；
 3. 正式好/中/差三档、12 类完整对抗集、干净样本误报率与扩展题集；
 4. 量表冻结、2 分钟 Demo/GIF 和开源许可证。

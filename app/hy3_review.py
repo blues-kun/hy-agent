@@ -266,8 +266,14 @@ class Hy3ReviewModel:
         )
 
     @property
-    def audit_identity(self) -> dict[str, str]:
+    def audit_identity(self) -> dict[str, object]:
         endpoint = urlsplit(self.transport.base_url)
+        max_parse_retries = int(
+            self.config.structured_output["max_parse_retries"]
+        )
+        fallback_channel = str(
+            self.config.structured_output.get("fallback_channel") or ""
+        )
         return {
             "execution_kind": "remote_hy3",
             "provider": "tencent-tokenhub",
@@ -275,6 +281,12 @@ class Hy3ReviewModel:
             "endpoint_origin": f"{endpoint.scheme}://{endpoint.netloc}",
             "endpoint_url": f"{self.transport.base_url}/chat/completions",
             "config_sha256": self.config.sha256,
+            "max_parse_retries": max_parse_retries,
+            "fallback_channel": fallback_channel,
+            "max_attempts": (
+                1 + max_parse_retries + (1 if fallback_channel else 0)
+            ),
+            "repair_policy": "bounded_schema_repair_v1",
         }
 
     def _call(

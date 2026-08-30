@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--judge-base-seed",
         type=int,
         help=(
-            "formal v3 必填；先按 question/replicate/claim 哈希派生，"
+            "formal v4 必填；先按 question/replicate/claim 哈希派生，"
             "再以 derived_base_seed + sample_index 生成 k 个 sample seed"
         ),
     )
@@ -49,12 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--generator-base-seed",
         type=int,
         default=20260831,
-        help="v3 A/B/C generation 的固定派生种子根；逐 question/replicate/arm/stage 哈希派生",
+        help="v4 A/B/C generation 的固定派生种子根；逐 question/replicate/arm/stage 哈希派生",
     )
     parser.add_argument(
         "--generator-cache-namespace",
-        default="mitoevidence-ablation-v3",
-        help="v3 generator cache/session namespace 根",
+        default="mitoevidence-ablation-v4",
+        help="v4 generator cache/session namespace 根",
     )
     parser.add_argument(
         "--out-root",
@@ -92,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.judge_base_seed is None:
         raise SystemExit(
-            "formal v3 要求显式 --judge-base-seed；无 seed 的 Judge 运行只能是 nonformal"
+            "formal v4 要求显式 --judge-base-seed；无 seed 的 Judge 运行只能是 nonformal"
         )
     gold_audit = audit_expert_gold(
         REPO_ROOT / "annotation_prelabel/expert_gold_manifest.json",
@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     if not gold_audit.get("ok"):
         raise SystemExit(
-            "formal v3 专家金标审计失败："
+            "formal v4 专家金标审计失败："
             + "；".join(str(item) for item in gold_audit.get("errors") or [])
         )
     expected_input_sha256 = gold_audit["datasets"]["pilot_questions"]["sha256"]
@@ -110,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"无法读取 --pilot-file：{exc}") from exc
     if actual_input_sha256 != expected_input_sha256:
         raise SystemExit(
-            "formal v3 --pilot-file 必须精确绑定 expert manifest 的 pilot_questions hash；"
+            "formal v4 --pilot-file 必须精确绑定 expert manifest 的 pilot_questions hash；"
             "自定义/投影输入只能用于独立 nonformal runner"
         )
     ids = args.pilot_id or [f"PILOT-{index:02d}" for index in range(1, 6)]
@@ -132,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     if not is_formal_hy3_metadata(shared_hy3_identity):
         raise SystemExit(
-            "formal v3 Generator/Judge 身份未通过共享 allowlist："
+            "formal v4 Generator/Judge 身份未通过共享 allowlist："
             "model 必须精确为 hy3，endpoint 必须是腾讯 TokenHub 官方 HTTPS 主机"
         )
     if not config.resolve_api_key():
@@ -183,9 +183,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"D 定义：同一 C 草稿的 Hy3 Judge gate，k={state.judge_k}，不追加检索")
     print("状态：pilot_ablation_generation_unscored；仍需用专家金标完成评分")
     print(
-        "Generator v3 provenance："
+        "Generator v4 provenance："
         f"base_seed={state.generator_provenance.base_seed}；"
-        f"namespace={state.generator_provenance.cache_namespace}"
+        f"namespace={state.generator_provenance.cache_namespace}；"
+        f"bounded_attempts≤{state.generator_provenance.max_attempts}"
     )
     return 0 if failed == 0 else 1
 

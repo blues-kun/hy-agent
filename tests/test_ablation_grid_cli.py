@@ -292,7 +292,7 @@ def test_legacy_complete_grid_with_failed_cell_is_complete(tmp_path: Path):
     assert result["outcomes"] == {"failed": 1, "succeeded": 3}
 
 
-def test_print_input_schema_lists_both_strict_contracts(tmp_path: Path):
+def test_print_input_schema_lists_all_strict_contracts(tmp_path: Path):
     target = tmp_path / "schemas.json"
     completed = subprocess.run(
         [
@@ -312,10 +312,13 @@ def test_print_input_schema_lists_both_strict_contracts(tmp_path: Path):
     schemas = rendered["supported_input_schemas"]
     assert set(schemas) == {
         "mitoevidence.ablation.v1",
-            "mitoevidence.pilot-ablation.v1",
-            "mitoevidence.pilot-ablation.v2",
-            "mitoevidence.pilot-ablation.v3",
-        }
+        "mitoevidence.pilot-ablation.v1",
+        "mitoevidence.pilot-ablation.v2",
+        "mitoevidence.pilot-ablation.v3",
+        "mitoevidence.pilot-ablation.v4",
+    }
     assert schemas["mitoevidence.ablation.v1"]["additionalProperties"] is False
     assert schemas["mitoevidence.pilot-ablation.v1"]["additionalProperties"] is False
     assert schemas["mitoevidence.pilot-ablation.v2"]["additionalProperties"] is False
+    assert schemas["mitoevidence.pilot-ablation.v3"]["additionalProperties"] is False
+    assert schemas["mitoevidence.pilot-ablation.v4"]["additionalProperties"] is False

@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
             "artifact audit STRUCTURAL INTEGRITY OK / NON-FORMAL："
             f"{result['records']['audited_cells']} cells；input_schema="
             f"{result['input_schema']}，production_ready 需要 "
-            "mitoevidence.pilot-ablation.v3；"
+            "mitoevidence.pilot-ablation.v3 或 v4 正式协议；"
             f"报告 {args.output}",
             file=sys.stderr,
         )
