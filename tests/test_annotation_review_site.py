@@ -22,7 +22,7 @@ def test_review_payload_is_manifest_verified_and_complete():
     builder = _load_builder()
     payload = builder.build_payload(REPO_ROOT)
 
-    assert payload["schema_version"] == "mitoevidence.annotation-review-site.v1"
+    assert payload["schema_version"] == "mitoevidence.annotation-review-site.v2"
     assert payload["summary"]["total_records"] == 127
     assert payload["summary"]["manifest_designation"] == "expert_consensus_gold"
     assert payload["summary"]["source_review_statuses"] == [
@@ -41,6 +41,46 @@ def test_review_payload_is_manifest_verified_and_complete():
         for record in dataset["records"]
     ]
     assert len(identities) == len(set(identities)) == 127
+
+
+def test_review_payload_exposes_denominator_preserving_analytics():
+    builder = _load_builder()
+    analytics = builder.build_payload(REPO_ROOT)["analytics"]
+
+    assert analytics["pilot_questions"]["answerability"] == {
+        "answerable": 2,
+        "out_of_scope": 1,
+        "partial": 2,
+    }
+    assert analytics["pilot_questions"]["required_claims"] == 30
+    assert analytics["pilot_questions"]["core_required_claims"] == 23
+    assert analytics["pilot_questions"]["questions_with_evidence_papers"] == 0
+    assert analytics["pilot_questions"]["questions_with_evidence_spans"] == 0
+    assert analytics["pilot_questions"]["resolvable_source_review_links"] == 14
+
+    claims = analytics["claim_reviews"]
+    assert claims["decision"] == {
+        "accept": 8,
+        "accept_with_edits": 25,
+        "reject": 14,
+        "uncertain": 3,
+    }
+    assert claims["with_recorded_conditions"] == 38
+    assert claims["without_recorded_conditions"] == 12
+    assert claims["defect_assignments"] == 156
+
+    terms = analytics["terminology_rules"]
+    assert terms["detector"] == {"human": 11, "judge": 6, "rule": 43}
+    assert terms["local_corpus_checked"] == 38
+    assert terms["local_corpus_unchecked"] == 22
+    assert terms["local_statement_links"] == 61
+    assert terms["resolvable_local_statement_links"] == 59
+
+    reviews = analytics["review_pool"]
+    assert reviews["local_xml_verified"] == 7
+    assert reviews["with_pmcid"] == 9
+    assert reviews["reference_count_total"] == 2043
+    assert reviews["year_range"] == [2015, 2026]
 
 
 def test_review_payload_preserves_source_provenance_and_empty_evidence():
@@ -71,6 +111,11 @@ def test_generated_review_data_is_current():
     actual = (REPO_ROOT / "review_site/data/annotations.json").read_text(encoding="utf-8")
     assert actual == expected
 
+    standalone = REPO_ROOT / "review_site/mitoevidence-annotation-review.html"
+    assert standalone.read_text(encoding="utf-8") == builder.render_standalone(
+        REPO_ROOT, builder.build_payload(REPO_ROOT)
+    )
+
 
 def test_site_uses_relative_assets_and_safe_dom_text_rendering():
     html = (REPO_ROOT / "review_site/index.html").read_text(encoding="utf-8")
@@ -87,8 +132,31 @@ def test_site_uses_relative_assets_and_safe_dom_text_rendering():
     assert '.normalize("NFKC")' in script
     assert 'claim.is_core ? "accept"' not in script
     assert "source_sha256" in script
+    assert "window.__MITOEVIDENCE_ANNOTATIONS__" in script
+    assert 'id="coverage-bars"' in html
+    assert 'id="quick-views"' in html
+    assert 'id="download-json"' in html
+    assert 'id="export-csv"' in html
+    assert 'window.location.protocol === "file:"' in script
+    assert "fileHashWrittenByApp" in script
     assert data["repository"] == "blues-kun/hy-agent"
     assert (REPO_ROOT / "review_site/og.png").is_file()
+
+
+def test_standalone_html_embeds_verified_data_and_all_runtime_assets():
+    standalone = (
+        REPO_ROOT / "review_site/mitoevidence-annotation-review.html"
+    ).read_text(encoding="utf-8")
+    assert "window.__MITOEVIDENCE_ANNOTATIONS__" in standalone
+    assert "mitoevidence.annotation-review-site.v2" in standalone
+    assert '<link rel="stylesheet" href="./styles.css" />' not in standalone
+    assert '<script src="./app.js" defer></script>' not in standalone
+    assert 'href="./favicon.svg"' not in standalone
+    assert 'href="./mitoevidence-annotation-review.html"' not in standalone
+    assert 'href="./data/annotations.json"' not in standalone
+    assert "data:image/svg+xml;base64," in standalone
+    assert "开始离线审阅" in standalone
+    assert "127" in standalone
 
 
 def test_pages_workflow_only_deploys_main_and_checks_javascript():

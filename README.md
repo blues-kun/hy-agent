@@ -6,7 +6,7 @@
 
 ![Model](https://img.shields.io/badge/MODEL-Hy3-111111?style=flat-square)
 ![Version](https://img.shields.io/badge/MVP-v0.3.1-555555?style=flat-square)
-![Tests](https://img.shields.io/badge/TESTS-587%20PASSING-111111?style=flat-square)
+![Tests](https://img.shields.io/badge/TESTS-589%20PASSING-111111?style=flat-square)
 ![Gold](https://img.shields.io/badge/EXPERT%20GOLD-127-555555?style=flat-square)
 [![Mito Agent](https://img.shields.io/badge/MITO--AGENT-DEPLOYED-111111?style=flat-square)](https://agent.blueskun.com:8444/)
 [![Annotation Review](https://img.shields.io/badge/ANNOTATION%20REVIEW-127-118C8B?style=flat-square)](https://blues-kun.github.io/hy-agent/)
@@ -40,8 +40,9 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 [Mito-Agent 在线实例](https://agent.blueskun.com:8444/)已经部署。仓库提供可复现的 Hy3
 调用、评测、实验和审计代码；在线实例与本仓库实验结果分别报告，不把部署状态当作有效性结论。
 
-四类 127 条参考标注可在[标注审阅台](https://blues-kun.github.io/hy-agent/)中按类别、状态和
-风险提示浏览，并逐条回到对应 JSONL 行。该页面是只读展示层，不改变源记录及其历史字段。
+四类 127 条参考标注可在[专家标注集](https://blues-kun.github.io/hy-agent/)中查看证据覆盖、
+判定分布和跨表关联，并按任务、类别、状态与关键词逐条审阅。页面支持筛选结果 CSV、单条 JSON、
+打印/PDF 和离线 HTML 导出；它始终是只读展示层，不改变源记录及其历史字段。
 
 ## 2. 当前状态
 
@@ -56,7 +57,7 @@ MitoEvidence 包含两部分：面向医学实验与文献综述的 **Mito-Agent
 | 真实有效性 Pilot | 术语正误对 180/180 次、Claim 准入 50/50 次真实 Hy3 调用完成 | `app/terminology_pair_pilot.py`、`app/claim_admission_pilot.py` |
 | A/B/C/D 消融 | 正式 v4 共 60/60 cells 完成并通过独立产物审计，`production_ready=true`；D 组 answerability 11/15（0.7333），κ=0.5833 | `app/ablation.py`、`evaluator/ablation_artifacts.py`、`docs/experiment_results_20260831.md` |
 | 实验协议 | 系统—专家参考一致度、判别力、稳定性、对抗性与消融审计入口已实现 | `evaluator/experiment_protocol.py` |
-| 工程验证 | Python 3.11 下 587 项离线测试通过 | `tests/` |
+| 工程验证 | Python 3.11 下 589 项离线测试通过 | `tests/` |
 
 127 条金标来自四类任务，不能当作 127 个同构评分样本混算：
 

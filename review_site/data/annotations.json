@@ -1,4 +1,177 @@
 {
+  "analytics": {
+    "claim_reviews": {
+      "confidence": {
+        "high": 41,
+        "low": 1,
+        "medium": 8
+      },
+      "decision": {
+        "accept": 8,
+        "accept_with_edits": 25,
+        "reject": 14,
+        "uncertain": 3
+      },
+      "defect_assignments": 156,
+      "defect_codes": {
+        "ABBREVIATION_LIST_SPAN": 1,
+        "ABBREV_NOT_EXPANDED": 1,
+        "ASSAY_PRINCIPLE": 1,
+        "CERTAINTY_OVERSTATED": 3,
+        "CONDITION_DEPENDENT": 1,
+        "CONDITION_FIELD_OVERLOADED": 1,
+        "CONDITION_MISATTACHED": 1,
+        "CONDITION_STRIPPED": 10,
+        "CONTESTED": 2,
+        "CORRELATION_AS_CAUSATION": 2,
+        "DEFINITIONAL": 1,
+        "DIRECTION_REVERSED": 1,
+        "DOSE_MISSING": 5,
+        "ENTITY_MALFORMED": 1,
+        "ENTITY_NOT_NORMALIZED": 1,
+        "FUNCTIONAL_DIRECTION_AMBIGUOUS": 1,
+        "HEADING_AS_EVIDENCE": 2,
+        "IMPRECISE_ENTITY": 1,
+        "INFERENCE_FROM_COEXPRESSION": 1,
+        "INFERENCE_NOT_STATED": 3,
+        "MARKER_AS_PHENOTYPE": 1,
+        "MECHANISM_LOST": 1,
+        "MISSING_ATTRIBUTION": 1,
+        "MODEL_OUTPUT_AS_MEASUREMENT": 2,
+        "MODEL_VS_EXPERIMENT_UNCLEAR": 4,
+        "NEAR_DUPLICATE": 2,
+        "NEAR_DUPLICATE_CROSS_PAPER": 2,
+        "NECESSITY_NOT_SUFFICIENCY": 1,
+        "NON_ATOMIC": 9,
+        "OCR_CORRUPTED": 5,
+        "OFF_DOMAIN": 13,
+        "OFF_TOPIC": 2,
+        "OUTCOME_LEVEL_IMPRECISE": 1,
+        "PATHWAY_COLLAPSED": 1,
+        "PHARMACOLOGY_BACKGROUND": 2,
+        "POLARITY_INCONSISTENT": 1,
+        "POLARITY_MISLABELED": 1,
+        "POLARITY_MISLABELED_NULL_RESULT": 1,
+        "PREPRINT": 13,
+        "PROVENANCE_UNCLEAR": 1,
+        "REF_LIST_SPAN": 5,
+        "SECONDARY_SOURCE": 14,
+        "SECONDARY_SOURCE_WITH_CITATION_MARKER": 1,
+        "SECTION_MISLABELED": 5,
+        "SPAN_CONTEXT_DEPENDENT": 1,
+        "SPAN_INCOMPLETE_SENTENCE": 2,
+        "SPAN_INTERPRETIVE": 1,
+        "SPAN_METHODOLOGICAL": 2,
+        "SPAN_TOO_SHORT": 1,
+        "SYMBOL_NOT_NORMALIZED": 3,
+        "SYNONYM_NOT_NORMALIZED": 1,
+        "TAIL_CONTAINS_MODIFIER": 2,
+        "TAIL_IS_PROCEDURE_NOT_METHOD": 1,
+        "TERM_NONSTANDARD": 2,
+        "UNIT_INVALID": 1,
+        "VACUOUS": 7,
+        "VAGUE_HEAD": 1,
+        "VAGUE_OUTCOME": 1,
+        "VAGUE_TAIL": 1
+      },
+      "records_with_defects": 49,
+      "source_type": {
+        "off_domain_primary": 14,
+        "peer_reviewed_primary": 11,
+        "preprint_computational_model": 13,
+        "review_secondary": 12
+      },
+      "usable_for_beta_cell_evidence": {
+        "False": 25,
+        "True": 22,
+        "unknown": 3
+      },
+      "with_recorded_conditions": 38,
+      "without_recorded_conditions": 12
+    },
+    "pilot_questions": {
+      "answerability": {
+        "answerable": 2,
+        "out_of_scope": 1,
+        "partial": 2
+      },
+      "core_required_claims": 23,
+      "known_conflicts": 4,
+      "prohibited_inferences": 26,
+      "questions_with_evidence_papers": 0,
+      "questions_with_evidence_spans": 0,
+      "questions_with_source_reviews": 4,
+      "required_claim_confidence": {
+        "high": 20,
+        "low": 1,
+        "medium": 9
+      },
+      "required_claims": 30,
+      "resolvable_source_review_links": 14,
+      "source_review_links": 16,
+      "unique_source_pmids": 8,
+      "verification_items": 28
+    },
+    "review_pool": {
+      "fulltext_status": {
+        "local_xml_verified_in_manifest": 7,
+        "manifest_xml_unavailable": 2,
+        "no_pmcid_xml_unavailable": 3
+      },
+      "local_xml_verified": 7,
+      "published_since_2024": 5,
+      "reference_count_max": 489,
+      "reference_count_mean": 170.25,
+      "reference_count_min": 53,
+      "reference_count_total": 2043,
+      "with_pmcid": 9,
+      "year_range": [
+        2015,
+        2026
+      ]
+    },
+    "terminology_rules": {
+      "categories": {
+        "单位与数值": 2,
+        "命名与别名": 4,
+        "因果越界": 6,
+        "安全边界": 4,
+        "文本损坏": 3,
+        "方向与极性": 6,
+        "方法学能力边界": 9,
+        "术语规范": 9,
+        "物种细胞外推": 4,
+        "统计与重复": 5,
+        "证据类型": 8
+      },
+      "confidence": {
+        "high": 55,
+        "medium": 5
+      },
+      "detector": {
+        "human": 11,
+        "judge": 6,
+        "rule": 43
+      },
+      "dimension_assignments": {
+        "D1": 5,
+        "D2": 13,
+        "D3": 5,
+        "D4": 28,
+        "D5": 21,
+        "D6": 7,
+        "D7": 7,
+        "D8": 28,
+        "D9": 3
+      },
+      "local_corpus_checked": 38,
+      "local_corpus_unchecked": 22,
+      "local_statement_links": 61,
+      "records_with_verification_items": 40,
+      "resolvable_local_statement_links": 59,
+      "unique_local_statement_ids": 39
+    }
+  },
   "datasets": [
     {
       "description": "问题级可回答性、必需主张、禁止推断与证据缺口",
@@ -5869,7 +6042,7 @@
   "manifest_path": "annotation_prelabel/expert_gold_manifest.json",
   "manifest_sha256": "cf67dd5856bd6d2a6eead1e169970b0b17482bb694339489afa1210776bbfd3f",
   "repository": "blues-kun/hy-agent",
-  "schema_version": "mitoevidence.annotation-review-site.v1",
+  "schema_version": "mitoevidence.annotation-review-site.v2",
   "summary": {
     "dataset_count": 4,
     "manifest_designation": "expert_consensus_gold",

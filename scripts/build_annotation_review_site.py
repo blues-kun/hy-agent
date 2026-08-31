@@ -8,10 +8,12 @@ writes anything.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import sys
 import unicodedata
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +21,8 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "annotation_prelabel/expert_gold_manifest.json"
 DEFAULT_OUTPUT = Path("review_site/data/annotations.json")
-SCHEMA_VERSION = "mitoevidence.annotation-review-site.v1"
+DEFAULT_STANDALONE_OUTPUT = Path("review_site/mitoevidence-annotation-review.html")
+SCHEMA_VERSION = "mitoevidence.annotation-review-site.v2"
 
 DATASET_UI = {
     "pilot_questions": {
@@ -195,6 +198,181 @@ def _display_metadata(dataset: str, row: dict[str, Any]) -> dict[str, Any]:
     raise KeyError(dataset)
 
 
+def _counter(values: list[Any]) -> dict[str, int]:
+    """Return a stable JSON counter without silently dropping null values."""
+    counter = Counter("unknown" if value is None else str(value) for value in values)
+    return {key: counter[key] for key in sorted(counter)}
+
+
+def _build_analytics(datasets: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = {
+        dataset["name"]: [record["record"] for record in dataset["records"]]
+        for dataset in datasets
+    }
+    pilots = rows["pilot_questions"]
+    claims = rows["claim_reviews"]
+    terms = rows["terminology_rules"]
+    reviews = rows["review_pool"]
+
+    pilot_required_claims = [
+        claim for row in pilots for claim in row.get("required_claims", [])
+    ]
+    review_years = [
+        int(row["bibliography"]["year"])
+        for row in reviews
+        if (row.get("bibliography") or {}).get("year") is not None
+    ]
+    defect_codes = Counter(
+        code for row in claims for code in row.get("defect_codes", [])
+    )
+    term_categories = Counter(str(row.get("category") or "unknown") for row in terms)
+    term_dimensions = Counter(
+        dimension for row in terms for dimension in row.get("maps_to_dimension", [])
+    )
+    source_pmids = {
+        str(value).split(":", 1)[1]
+        for row in pilots
+        for value in row.get("source_reviews", [])
+        if str(value).startswith("PMID:") and ":" in str(value)
+    }
+    local_statement_ids = {
+        statement_id
+        for row in terms
+        for statement_id in (row.get("observed_in_local_corpus") or [])
+    }
+    claim_statement_ids = {str(row.get("statement_id")) for row in claims}
+    review_pmids = {
+        str((row.get("bibliography") or {}).get("pmid")) for row in reviews
+    }
+    source_review_occurrences = [
+        str(value).split(":", 1)[1]
+        for row in pilots
+        for value in row.get("source_reviews", [])
+        if str(value).startswith("PMID:") and ":" in str(value)
+    ]
+    local_statement_occurrences = [
+        str(statement_id)
+        for row in terms
+        for statement_id in (row.get("observed_in_local_corpus") or [])
+    ]
+
+    return {
+        "pilot_questions": {
+            "answerability": _counter([row.get("answerability") for row in pilots]),
+            "required_claims": len(pilot_required_claims),
+            "core_required_claims": sum(
+                claim.get("is_core") is True for claim in pilot_required_claims
+            ),
+            "required_claim_confidence": _counter(
+                [claim.get("ai_confidence") for claim in pilot_required_claims]
+            ),
+            "source_review_links": sum(
+                len(row.get("source_reviews", [])) for row in pilots
+            ),
+            "unique_source_pmids": len(source_pmids),
+            "resolvable_source_review_links": sum(
+                pmid in review_pmids for pmid in source_review_occurrences
+            ),
+            "questions_with_source_reviews": sum(
+                bool(row.get("source_reviews")) for row in pilots
+            ),
+            "questions_with_evidence_papers": sum(
+                bool(row.get("evidence_papers")) for row in pilots
+            ),
+            "questions_with_evidence_spans": sum(
+                bool(row.get("evidence_spans")) for row in pilots
+            ),
+            "prohibited_inferences": sum(
+                len(row.get("prohibited_inferences", [])) for row in pilots
+            ),
+            "known_conflicts": sum(
+                len(row.get("known_conflicts", [])) for row in pilots
+            ),
+            "verification_items": sum(
+                len(row.get("needs_human_verification", [])) for row in pilots
+            ),
+        },
+        "claim_reviews": {
+            "decision": _counter([row.get("ai_decision") for row in claims]),
+            "confidence": _counter([row.get("ai_confidence") for row in claims]),
+            "usable_for_beta_cell_evidence": _counter(
+                [row.get("usable_for_beta_cell_evidence") for row in claims]
+            ),
+            "with_recorded_conditions": sum(
+                bool(row.get("recorded_conditions")) for row in claims
+            ),
+            "without_recorded_conditions": sum(
+                not row.get("recorded_conditions") for row in claims
+            ),
+            "source_type": _counter([row.get("source_type") for row in claims]),
+            "records_with_defects": sum(bool(row.get("defect_codes")) for row in claims),
+            "defect_assignments": sum(len(row.get("defect_codes", [])) for row in claims),
+            "defect_codes": dict(
+                sorted(defect_codes.items(), key=lambda item: (-item[1], item[0]))
+            ),
+        },
+        "terminology_rules": {
+            "detector": _counter([row.get("detector") for row in terms]),
+            "confidence": _counter([row.get("ai_confidence") for row in terms]),
+            "local_corpus_checked": sum(
+                row.get("observed_in_local_corpus") is not None for row in terms
+            ),
+            "local_corpus_unchecked": sum(
+                row.get("observed_in_local_corpus") is None for row in terms
+            ),
+            "local_statement_links": sum(
+                len(row.get("observed_in_local_corpus") or []) for row in terms
+            ),
+            "unique_local_statement_ids": len(local_statement_ids),
+            "resolvable_local_statement_links": sum(
+                statement_id in claim_statement_ids
+                for statement_id in local_statement_occurrences
+            ),
+            "records_with_verification_items": sum(
+                bool(row.get("needs_human_verification")) for row in terms
+            ),
+            "dimension_assignments": dict(
+                sorted(term_dimensions.items(), key=lambda item: (-item[1], item[0]))
+            ),
+            "categories": dict(
+                sorted(term_categories.items(), key=lambda item: (-item[1], item[0]))
+            ),
+        },
+        "review_pool": {
+            "fulltext_status": _counter(
+                [(row.get("fulltext") or {}).get("status") for row in reviews]
+            ),
+            "local_xml_verified": sum(
+                (row.get("fulltext") or {}).get("status")
+                == "local_xml_verified_in_manifest"
+                for row in reviews
+            ),
+            "with_pmcid": sum(
+                bool((row.get("bibliography") or {}).get("pmcid")) for row in reviews
+            ),
+            "reference_count_total": sum(
+                int(row.get("reference_count") or 0) for row in reviews
+            ),
+            "reference_count_min": min(
+                int(row.get("reference_count") or 0) for row in reviews
+            ),
+            "reference_count_max": max(
+                int(row.get("reference_count") or 0) for row in reviews
+            ),
+            "reference_count_mean": round(
+                sum(int(row.get("reference_count") or 0) for row in reviews)
+                / len(reviews),
+                2,
+            ),
+            "published_since_2024": sum(
+                int((row.get("bibliography") or {}).get("year") or 0) >= 2024
+                for row in reviews
+            ),
+            "year_range": [min(review_years), max(review_years)] if review_years else [],
+        },
+    }
+
+
 def build_payload(repo_root: Path = REPO_ROOT) -> dict[str, Any]:
     manifest_path = repo_root / MANIFEST_PATH.relative_to(REPO_ROOT)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -283,6 +461,7 @@ def build_payload(repo_root: Path = REPO_ROOT) -> dict[str, Any]:
             "source_review_statuses": source_review_statuses,
             "manifest_designation": manifest["designation"],
         },
+        "analytics": _build_analytics(datasets),
         "datasets": datasets,
     }
 
@@ -291,12 +470,61 @@ def render_payload(payload: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
 
 
+def _script_safe_json(payload: dict[str, Any]) -> str:
+    rendered = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return (
+        rendered.replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+
+
+def render_standalone(repo_root: Path, payload: dict[str, Any]) -> str:
+    """Build one portable HTML file with the verified snapshot embedded."""
+    site_root = repo_root / "review_site"
+    html = (site_root / "index.html").read_text(encoding="utf-8")
+    css = (site_root / "styles.css").read_text(encoding="utf-8")
+    javascript = (site_root / "app.js").read_text(encoding="utf-8")
+    favicon = base64.b64encode((site_root / "favicon.svg").read_bytes()).decode("ascii")
+    style_token = '<link rel="stylesheet" href="./styles.css" />'
+    script_token = '<script src="./app.js" defer></script>'
+    if style_token not in html or script_token not in html:
+        raise ValueError("index.html 缺少 standalone 构建锚点")
+    html = html.replace(style_token, f"<style>\n{css}\n</style>", 1)
+    html = html.replace(
+        'href="./favicon.svg"',
+        f'href="data:image/svg+xml;base64,{favicon}"',
+        1,
+    )
+    html = html.replace('class="brand" href="./"', 'class="brand" href="#overview"', 1)
+    html = html.replace(
+        'href="./mitoevidence-annotation-review.html"', 'href="#review"', 1
+    )
+    html = html.replace(
+        '\n              download="MitoEvidence-专家标注集.html"', "", 1
+    )
+    html = html.replace(">下载离线 HTML</a>", ">开始离线审阅</a>", 1)
+    bootstrap = (
+        "<script>\nwindow.__MITOEVIDENCE_ANNOTATIONS__ = "
+        + _script_safe_json(payload)
+        + ";\n</script>\n<script>\n"
+        + javascript.replace("</script", "<\\/script")
+        + "\n</script>"
+    )
+    return html.replace(script_token, bootstrap, 1)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="从冻结 JSONL 构建 MitoEvidence 标注审阅台数据"
     )
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--standalone-output", type=Path, default=DEFAULT_STANDALONE_OUTPUT
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -309,12 +537,22 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     payload = build_payload(args.repo_root.resolve())
     rendered = render_payload(payload)
+    standalone = render_standalone(args.repo_root.resolve(), payload)
     output = args.output
+    standalone_output = args.standalone_output
     if not output.is_absolute():
         output = args.repo_root / output
+    if not standalone_output.is_absolute():
+        standalone_output = args.repo_root / standalone_output
     if args.check:
         if not output.is_file():
             print(f"缺少生成文件：{output}", file=sys.stderr)
+            return 1
+        if not standalone_output.is_file():
+            print(f"缺少 standalone 文件：{standalone_output}", file=sys.stderr)
+            return 1
+        if standalone_output.read_text(encoding="utf-8") != standalone:
+            print(f"standalone 文件已过期：{standalone_output}", file=sys.stderr)
             return 1
         if output.read_text(encoding="utf-8") != rendered:
             print(f"生成文件已过期：{output}", file=sys.stderr)
@@ -327,8 +565,11 @@ def main(argv: list[str] | None = None) -> int:
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(rendered, encoding="utf-8")
+    standalone_output.parent.mkdir(parents=True, exist_ok=True)
+    standalone_output.write_text(standalone, encoding="utf-8")
     print(
-        f"已生成 {output}：{payload['summary']['total_records']} records；"
+        f"已生成 {output} 与 {standalone_output}："
+        f"{payload['summary']['total_records']} records；"
         f"{payload['summary']['records_with_risk']} records with review flags"
     )
     return 0
