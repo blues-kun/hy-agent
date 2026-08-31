@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f5f1e7" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>MitoEvidence 标注审阅台</title>
+    <meta
+      name="description"
+      content="浏览 MitoEvidence 的 127 条 Pilot、Claim、术语与综述池参考记录，并核查来源、风险和证据边界。"
+    />
+    <meta property="og:title" content="MitoEvidence 标注审阅台" />
+    <meta
+      property="og:description"
+      content="127 条参考记录 · 来源与证据边界透明呈现"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://blues-kun.github.io/hy-agent/" />
+    <meta
+      property="og:image"
+      content="https://blues-kun.github.io/hy-agent/og.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MitoEvidence 标注审阅台" />
+    <meta
+      name="twitter:description"
+      content="127 条参考记录 · 来源与证据边界透明呈现"
+    />
+    <meta
+      name="twitter:image"
+      content="https://blues-kun.github.io/hy-agent/og.png"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#records">跳到记录列表</a>
+
+    <header class="topbar">
+      <div class="topbar__inner">
+        <a class="brand" href="./" aria-label="MitoEvidence 标注审阅台首页">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M12 3 4.8 7.1 12 11.2l7.2-4.1L12 3Z" />
+              <path d="m4.8 11.1 7.2 4.1 7.2-4.1" />
+              <path d="m4.8 15.2 7.2 4.1 7.2-4.1" />
+            </svg>
+          </span>
+          <span>
+            <strong>MitoEvidence</strong>
+            <small>标注审阅台</small>
+          </span>
+        </a>
+        <nav class="topnav" aria-label="外部链接">
+          <a
+            id="manifest-link"
+            href="https://github.com/blues-kun/hy-agent/blob/main/annotation_prelabel/expert_gold_manifest.json"
+            target="_blank"
+            rel="noreferrer"
+          >仓库当前 manifest</a>
+          <a
+            class="topnav__primary"
+            href="https://github.com/blues-kun/hy-agent"
+            target="_blank"
+            rel="noreferrer"
+          >GitHub 仓库</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Evidence review workspace</p>
+          <h1 id="page-title">让每条参考记录的来源与边界一眼可见</h1>
+          <p class="intro__copy">
+            集中浏览 Pilot、Claim、术语规则和综述池记录。页面只读展示冻结快照，不会在浏览器中改写金标。
+          </p>
+        </div>
+        <div class="snapshot-seal" aria-label="快照状态">
+          <span class="snapshot-seal__dot" aria-hidden="true"></span>
+          <div>
+            <strong id="snapshot-date">正在核验快照</strong>
+            <span id="manifest-hash">读取 manifest…</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="provenance-banner" aria-labelledby="provenance-title">
+        <span class="provenance-banner__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="img">
+            <path d="M12 3.5 21 19H3L12 3.5Z" />
+            <path d="M12 9v4.5M12 17h.01" />
+          </svg>
+        </span>
+        <div>
+          <h2 id="provenance-title">这里同时保留两层来源信息</h2>
+          <p>
+            Manifest 将当前快照指定为项目可用的 <code>expert_consensus_gold</code>；源 JSONL
+            仍记录历史字段 <code>AI预标 / ai_prelabel_pending_human</code>。页面不会把后者伪装成独立 A/B 专家逐项审核。
+          </p>
+        </div>
+        <button class="text-button" id="provenance-more" type="button">查看说明</button>
+      </section>
+
+      <section class="metrics" id="metrics" aria-label="数据概览">
+        <article class="metric metric--total">
+          <span>全部参考记录</span>
+          <strong>—</strong>
+          <small>等待数据</small>
+        </article>
+      </section>
+
+      <section class="review-surface" aria-label="标注记录浏览器">
+        <div class="dataset-tabs" id="dataset-tabs" role="tablist" aria-label="数据类别"></div>
+
+        <div class="toolbar">
+          <label class="search-box" for="search-input">
+            <span class="sr-only">搜索标注记录</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="m16 16 4 4" />
+            </svg>
+            <input
+              id="search-input"
+              type="search"
+              placeholder="搜索 ID、主张、DOI、PMID、术语或条件…"
+              autocomplete="off"
+              spellcheck="false"
+              disabled
+            />
+            <kbd>/</kbd>
+          </label>
+          <div class="toolbar__filters">
+            <label class="select-control">
+              <span>类别内状态</span>
+              <select id="status-filter" aria-label="按当前类别的状态筛选" disabled>
+                <option value="all">全部状态</option>
+              </select>
+            </label>
+            <label class="focus-toggle">
+              <input id="risk-filter" type="checkbox" disabled />
+              <span class="focus-toggle__visual" aria-hidden="true"></span>
+              只看有审阅提示
+            </label>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <aside class="record-pane" id="records" aria-label="记录列表">
+            <div class="record-pane__header">
+              <div>
+                <strong id="result-count">载入中</strong>
+                <span id="result-context">正在读取冻结快照</span>
+              </div>
+              <button id="clear-filters" class="quiet-button" type="button">清除筛选</button>
+            </div>
+            <div class="record-list" id="record-list" aria-label="标注记录">
+              <div class="loading-state">
+                <span class="loading-state__orb" aria-hidden="true"></span>
+                正在核对 127 条记录与 manifest…
+              </div>
+            </div>
+          </aside>
+
+          <article class="detail-pane" id="detail-pane" aria-live="polite">
+            <div class="detail-empty">
+              <span aria-hidden="true">↳</span>
+              <h2>选择一条记录查看完整内容</h2>
+              <p>右侧会按数据类型呈现主张、条件、证据、风险和源文件位置。</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="provenance-dialog" id="provenance-dialog" aria-labelledby="provenance-dialog-title">
+      <form method="dialog">
+        <button class="dialog-close" aria-label="关闭说明">×</button>
+        <p class="eyebrow">Provenance note</p>
+        <h2 id="provenance-dialog-title">为什么页面同时显示“金标指定”和“AI 预标字段”？</h2>
+        <p>
+          项目负责人确认这四份 JSONL 是本轮唯一可用参考，因此 manifest 在快照层将其指定为
+          <code>expert_consensus_gold</code>。为了不改写历史，记录中的 <code>annotator</code>、
+          <code>review_status</code> 和 <code>ai_*</code> 字段保持原值。
+        </p>
+        <p>
+          这不代表存在两名独立专家标签，也不能据此计算专家间 κ 或 ICC。所有风险标签仅用于提示审阅，
+          不会自动改变源数据结论。
+        </p>
+        <button class="dialog-confirm" value="close">我知道了</button>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <footer>
+      <span>MitoEvidence · Ground every claim. Trace every source.</span>
+      <span>只读展示 · 数据以仓库 JSONL 与 manifest 为准</span>
+    </footer>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,51 @@
+name: Deploy annotation review site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "annotation_prelabel/**"
+      - "review_site/**"
+      - "scripts/build_annotation_review_site.py"
+      - ".github/workflows/deploy-review-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify frozen review data
+        run: python scripts/build_annotation_review_site.py --check
+
+      - name: Check page scripts
+        run: |
+          node --check review_site/app.js
+          python -m compileall -q scripts/build_annotation_review_site.py tests/test_annotation_review_site.py
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: review_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
