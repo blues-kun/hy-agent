@@ -3,6 +3,67 @@
 const DATA_URL = "./data/annotations.json";
 const REPOSITORY_BLOB_URL = "https://github.com/blues-kun/hy-agent/blob/main/";
 
+const FILTER_LABELS = {
+  all: "选择类别后筛选",
+  pilot_questions: "可回答性",
+  claim_reviews: "准入结论",
+  terminology_rules: "建议检测方式",
+  review_pool: "全文状态",
+};
+
+const SEGMENT_COLORS = {
+  answerable: "#34785d",
+  partial: "#b07016",
+  out_of_scope: "#a83f2c",
+  accept: "#34785d",
+  accept_with_edits: "#b07016",
+  reject: "#a83f2c",
+  uncertain: "#667083",
+  rule: "#118c8b",
+  judge: "#315ea8",
+  human: "#7c4f9e",
+  local_xml_verified_in_manifest: "#34785d",
+  no_pmcid_xml_unavailable: "#b07016",
+  manifest_xml_unavailable: "#a83f2c",
+};
+
+const QUICK_VIEWS = [
+  {
+    id: "claim_usable",
+    dataset: "claim_reviews",
+    icon: "✓",
+    title: "可用于 β 细胞证据",
+    description: "按独立可用性字段筛选，不等同于 accept",
+    predicate: (record) => record.record.usable_for_beta_cell_evidence === true,
+  },
+  {
+    id: "claim_attention",
+    dataset: "claim_reviews",
+    icon: "↺",
+    title: "需要修改、拒绝或待定",
+    description: "集中处理不能直接纳入的 Claim",
+    predicate: (record) =>
+      ["accept_with_edits", "reject", "uncertain"].includes(record.record.ai_decision),
+  },
+  {
+    id: "term_human",
+    dataset: "terminology_rules",
+    icon: "◎",
+    title: "建议人工判断的规则",
+    description: "detector=human 是执行通道，不是标注来源",
+    predicate: (record) => record.record.detector === "human",
+  },
+  {
+    id: "review_fulltext",
+    dataset: "review_pool",
+    icon: "▤",
+    title: "已有冻结全文的综述",
+    description: "本地 XML 与 SHA-256 已写入 Manifest",
+    predicate: (record) =>
+      record.record.fulltext?.status === "local_xml_verified_in_manifest",
+  },
+];
+
 const STATUS_LABELS = {
   answerable: "可回答",
   partial: "部分可回答",
@@ -23,6 +84,16 @@ const STATUS_LABELS = {
   abstract_only_no_pmcid: "仅摘要",
   abstract_only_no_oa_xml: "仅摘要 / 无 OA XML",
   unknown: "未记录",
+  peer_reviewed_primary: "同行评议原始研究",
+  review_secondary: "综述二级证据",
+  off_domain_primary: "域外原始研究",
+  preprint_computational_model: "预印本计算模型",
+  results: "结果",
+  discussion: "讨论",
+  methods: "方法",
+  abstract: "摘要",
+  conclusion: "结论",
+  front_matter: "前置信息",
 };
 
 const STATUS_TONES = {
@@ -78,16 +149,33 @@ const state = {
   dataset: "all",
   status: "all",
   riskOnly: false,
+  preset: null,
+  sort: "id",
   query: "",
   selectedKey: null,
 };
 
+let fileHashWrittenByApp = null;
+
 const dom = {
   metrics: document.querySelector("#metrics"),
+  heroSummary: document.querySelector("#hero-summary"),
+  flow: document.querySelector("#annotation-flow"),
+  coverage: document.querySelector("#coverage-bars"),
+  distributions: document.querySelector("#distribution-panels"),
+  referenceTotal: document.querySelector("#reference-total"),
+  dialogTotal: document.querySelector("#dialog-total"),
+  quickViews: document.querySelector("#quick-views"),
   tabs: document.querySelector("#dataset-tabs"),
+  activePreset: document.querySelector("#active-preset"),
   search: document.querySelector("#search-input"),
   status: document.querySelector("#status-filter"),
   risk: document.querySelector("#risk-filter"),
+  sort: document.querySelector("#sort-order"),
+  statusLabel: document.querySelector("#status-filter-label"),
+  downloadJson: document.querySelector("#download-json"),
+  exportCsv: document.querySelector("#export-csv"),
+  copyViewLink: document.querySelector("#copy-view-link"),
   clear: document.querySelector("#clear-filters"),
   count: document.querySelector("#result-count"),
   context: document.querySelector("#result-context"),
@@ -96,6 +184,7 @@ const dom = {
   date: document.querySelector("#snapshot-date"),
   hash: document.querySelector("#manifest-hash"),
   provenanceButton: document.querySelector("#provenance-more"),
+  scopeNote: document.querySelector("#scope-note"),
   provenanceDialog: document.querySelector("#provenance-dialog"),
   manifestLink: document.querySelector("#manifest-link"),
   toast: document.querySelector("#toast"),
@@ -112,6 +201,23 @@ function append(parent, ...children) {
   for (const child of children.flat()) {
     if (child !== null && child !== undefined) parent.append(child);
   }
+  return parent;
+}
+
+function safeTitleElement(tag, className, text) {
+  const parent = element(tag, className);
+  const tokens = String(text || "").split(/(<\/?i>)/i);
+  let italic = null;
+  tokens.forEach((token) => {
+    if (/^<i>$/i.test(token)) {
+      italic = element("em", "");
+      parent.append(italic);
+    } else if (/^<\/i>$/i.test(token)) {
+      italic = null;
+    } else if (token) {
+      (italic || parent).append(document.createTextNode(token));
+    }
+  });
   return parent;
 }
 
@@ -140,6 +246,11 @@ function displayValue(value, emptyLabel = "未记录") {
 
 function labelStatus(status) {
   return STATUS_LABELS[status] || status || STATUS_LABELS.unknown;
+}
+
+function formatCode(value) {
+  if (value === null || value === undefined) return "未记录";
+  return STATUS_LABELS[value] || String(value).replaceAll("_", " ");
 }
 
 function statusPill(status) {
@@ -274,32 +385,91 @@ function parseHash() {
   }
 }
 
-function updateHash(record) {
+function updateHash(record, push = false) {
   const next = `#${encodeURIComponent(record.dataset)}/${encodeURIComponent(record.id)}`;
-  if (window.location.hash !== next) history.replaceState(null, "", next);
+  if (window.location.hash === next) return;
+  try {
+    if (window.location.protocol === "file:") {
+      fileHashWrittenByApp = next;
+      window.location.hash = next;
+    } else if (push) {
+      history.pushState(null, "", next);
+    } else {
+      history.replaceState(null, "", next);
+    }
+  } catch (_error) {
+    try {
+      if (window.location.protocol === "file:") fileHashWrittenByApp = next;
+      window.location.hash = next;
+    } catch (_fallbackError) {
+      // Navigation metadata must never prevent the verified data from rendering.
+    }
+  }
 }
 
 function clearHash() {
   if (!window.location.hash) return;
-  history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  try {
+    if (window.location.protocol === "file:") {
+      fileHashWrittenByApp = "";
+      window.location.hash = "";
+    } else {
+      history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+  } catch (_error) {
+    try {
+      if (window.location.protocol === "file:") fileHashWrittenByApp = "";
+      window.location.hash = "";
+    } catch (_fallbackError) {
+      // A failed URL cleanup is cosmetic and must not break the review surface.
+    }
+  }
 }
 
 function normalizeQuery(value) {
   return String(value || "").normalize("NFKC").toLocaleLowerCase("zh-CN");
 }
 
+function getQuickView(id) {
+  return QUICK_VIEWS.find((view) => view.id === id) || null;
+}
+
+function compareRecordIds(left, right) {
+  return String(left.id).localeCompare(String(right.id), "zh-CN", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
 function filteredRecords() {
   const query = normalizeQuery(state.query.trim());
-  return allRecords().filter((record) => {
+  const preset = getQuickView(state.preset);
+  const records = allRecords().filter((record) => {
     if (state.dataset !== "all" && record.dataset !== state.dataset) return false;
     if (state.status !== "all" && record.status !== state.status) return false;
     if (state.riskOnly && !record.risk_flags.length) return false;
+    if (preset && !preset.predicate(record)) return false;
     if (query && !record.search_text.includes(query)) return false;
     return true;
+  });
+  return records.sort((left, right) => {
+    if (state.sort === "risk") {
+      return right.risk_flags.length - left.risk_flags.length || compareRecordIds(left, right);
+    }
+    if (state.sort === "title") {
+      return left.title.localeCompare(right.title, "zh-CN") || compareRecordIds(left, right);
+    }
+    return compareRecordIds(left, right);
   });
 }
 
 function renderMetrics() {
+  const purpose = {
+    pilot_questions: "定义问题范围、必需主张和禁止推断",
+    claim_reviews: "决定候选证据接受、修改或拒绝",
+    terminology_rules: "统一专业表达并拦截常见科研越界",
+    review_pool: "组织检索种子、全文状态和使用限制",
+  };
   const cards = [];
   const total = element("button", "metric metric--total");
   total.type = "button";
@@ -307,7 +477,8 @@ function renderMetrics() {
     total,
     element("span", "", "全部参考记录"),
     element("strong", "", state.payload.summary.total_records),
-    element("small", "", `${state.payload.summary.records_with_risk} 条带审阅提示`),
+    element("small", "", "4 类 · 单一汇总专家结果"),
+    element("p", "metric__purpose", "从研究问题到文献来源的完整参考快照"),
   );
   total.addEventListener("click", () => chooseDataset("all"));
   cards.push(total);
@@ -320,6 +491,7 @@ function renderMetrics() {
       element("span", "", dataset.label),
       element("strong", "", dataset.record_count),
       element("small", "", dataset.description),
+      element("p", "metric__purpose", purpose[dataset.name]),
     );
     card.addEventListener("click", () => chooseDataset(dataset.name));
     cards.push(card);
@@ -327,11 +499,200 @@ function renderMetrics() {
   dom.metrics.replaceChildren(...cards);
 }
 
+function renderFlow() {
+  const descriptions = {
+    pilot_questions: ["研究问题", "先定义怎样才算答对"],
+    claim_reviews: ["证据主张", "再判断哪些证据可采用"],
+    terminology_rules: ["写作规则", "随后约束科研表达边界"],
+    review_pool: ["文献来源", "最后回到综述与原始研究"],
+  };
+  const steps = state.payload.datasets.map((dataset, index) => {
+    const button = element("button", "flow-step");
+    button.type = "button";
+    button.setAttribute("aria-label", `查看 ${dataset.label} ${dataset.record_count} 条`);
+    const copy = element("span", "");
+    append(
+      copy,
+      element("strong", "", descriptions[dataset.name][0]),
+      element("small", "", descriptions[dataset.name][1]),
+    );
+    append(
+      button,
+      element("span", "flow-step__number", String(index + 1).padStart(2, "0")),
+      copy,
+      element("span", "flow-step__count", dataset.record_count),
+    );
+    button.addEventListener("click", () => chooseDataset(dataset.name));
+    return button;
+  });
+  dom.flow.replaceChildren(...steps);
+  const labels = Object.fromEntries(
+    state.payload.datasets.map((dataset) => [dataset.name, dataset.record_count]),
+  );
+  dom.heroSummary.textContent =
+    `${state.payload.summary.total_records} 条人工确认的汇总参考：` +
+    `${labels.pilot_questions} 个研究问题、${labels.claim_reviews} 条证据主张、` +
+    `${labels.terminology_rules} 条写作规则和 ${labels.review_pool} 篇种子综述。`;
+  dom.referenceTotal.textContent = state.payload.analytics.review_pool.reference_count_total.toLocaleString("zh-CN");
+  dom.dialogTotal.textContent = state.payload.summary.total_records;
+}
+
+function coverageRow(label, value, total, note, tone = "default") {
+  const row = element("div", "coverage-row");
+  row.dataset.tone = tone;
+  const meta = element("div", "coverage-row__meta");
+  append(meta, element("strong", "", label), element("span", "", `${value}/${total}`));
+  const track = element("div", "coverage-track");
+  track.setAttribute("role", "progressbar");
+  track.setAttribute("aria-label", `${label} ${value}/${total}`);
+  track.setAttribute("aria-valuemin", "0");
+  track.setAttribute("aria-valuemax", String(total));
+  track.setAttribute("aria-valuenow", String(value));
+  const fill = element("span", "");
+  fill.style.setProperty("--coverage", `${total ? (value / total) * 100 : 0}%`);
+  track.append(fill);
+  append(row, meta, track, element("small", "", note));
+  return row;
+}
+
+function renderCoverage() {
+  const analytics = state.payload.analytics;
+  const pilot = analytics.pilot_questions;
+  const claims = analytics.claim_reviews;
+  const terms = analytics.terminology_rules;
+  const reviews = analytics.review_pool;
+  const pilotTotal = getDataset("pilot_questions").record_count;
+  const claimTotal = getDataset("claim_reviews").record_count;
+  const termTotal = getDataset("terminology_rules").record_count;
+  const reviewTotal = getDataset("review_pool").record_count;
+  dom.coverage.replaceChildren(
+    coverageRow(
+      "Pilot 原文证据锚点",
+      Math.min(pilot.questions_with_evidence_papers, pilot.questions_with_evidence_spans),
+      pilotTotal,
+      `${pilot.resolvable_source_review_links}/${pilot.source_review_links} 个综述关联可跨表跳转；但综述线索不等于原文锚点`,
+      "danger",
+    ),
+    coverageRow(
+      "Claim 已记录实验条件",
+      claims.with_recorded_conditions,
+      claimTotal,
+      `另有 ${claims.without_recorded_conditions} 条条件字段为空`,
+      "warning",
+    ),
+    coverageRow(
+      "术语规则有本地实例",
+      terms.local_corpus_checked,
+      termTotal,
+      `共登记 ${terms.local_statement_links} 次 statement 引用，其中 ${terms.resolvable_local_statement_links} 次可跳转 Claim`,
+      "warning",
+    ),
+    coverageRow(
+      "综述已冻结本地全文",
+      reviews.local_xml_verified,
+      reviewTotal,
+      `PMCID 已记录 ${reviews.with_pmcid}/${reviewTotal}`,
+      "warning",
+    ),
+  );
+}
+
+function distributionRow(label, values) {
+  const row = element("div", "distribution-row");
+  const total = Object.values(values).reduce((sum, value) => sum + Number(value), 0);
+  const meta = element("div", "distribution-row__meta");
+  append(meta, element("strong", "", label), element("span", "", `${total} 条`));
+  const bar = element("div", "stacked-bar");
+  bar.setAttribute("aria-label", `${label}分布`);
+  const legend = element("div", "distribution-legend");
+  Object.entries(values).forEach(([status, count]) => {
+    const color = SEGMENT_COLORS[status] || "#667083";
+    const segment = element("span", "");
+    segment.style.setProperty("--segment", `${total ? (count / total) * 100 : 0}%`);
+    segment.style.setProperty("--segment-color", color);
+    segment.title = `${labelStatus(status)} ${count}`;
+    bar.append(segment);
+    const item = element("span", "legend-item", `${labelStatus(status)} ${count}`);
+    item.style.setProperty("--legend-color", color);
+    legend.append(item);
+  });
+  append(row, meta, bar, legend);
+  return row;
+}
+
+function renderDistributions() {
+  const analytics = state.payload.analytics;
+  const reviewStatus = analytics.review_pool.fulltext_status;
+  const reviewGrouped = {
+    local_xml_verified_in_manifest: reviewStatus.local_xml_verified_in_manifest || 0,
+    manifest_xml_unavailable:
+      (reviewStatus.manifest_xml_unavailable || 0) +
+      (reviewStatus.no_pmcid_xml_unavailable || 0),
+  };
+  dom.distributions.replaceChildren(
+    distributionRow("Pilot 可回答性", analytics.pilot_questions.answerability),
+    distributionRow("Claim 准入结论", analytics.claim_reviews.decision),
+    distributionRow("术语建议检测方式", analytics.terminology_rules.detector),
+    distributionRow("综述全文状态", reviewGrouped),
+  );
+}
+
+function renderQuickViews() {
+  const records = allRecords();
+  const cards = QUICK_VIEWS.map((view) => {
+    const count = records.filter(view.predicate).length;
+    const button = element("button", "quick-view");
+    button.type = "button";
+    button.dataset.preset = view.id;
+    button.setAttribute("aria-pressed", String(state.preset === view.id));
+    const top = element("span", "quick-view__top");
+    append(
+      top,
+      element("span", "quick-view__icon", view.icon),
+      element("span", "quick-view__count", count),
+    );
+    append(
+      button,
+      top,
+      element("strong", "", view.title),
+      element("small", "", view.description),
+    );
+    button.addEventListener("click", () => applyQuickView(view.id));
+    return button;
+  });
+  dom.quickViews.replaceChildren(...cards);
+}
+
+function applyQuickView(id) {
+  if (!state.payload) return;
+  const view = getQuickView(id);
+  if (!view) return;
+  state.preset = state.preset === id ? null : id;
+  state.dataset = state.preset ? view.dataset : "all";
+  state.status = "all";
+  state.riskOnly = false;
+  state.sort = "id";
+  state.query = "";
+  state.selectedKey = null;
+  document.body.classList.remove("mobile-detail-open");
+  dom.search.value = "";
+  dom.risk.checked = false;
+  dom.sort.value = "id";
+  renderQuickViews();
+  renderTabs();
+  renderStatusOptions();
+  renderRecords();
+  document.querySelector("#review")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function chooseDataset(name) {
   if (!state.payload) return;
   state.dataset = name;
   state.status = "all";
+  state.preset = null;
   state.selectedKey = null;
+  document.body.classList.remove("mobile-detail-open");
+  renderQuickViews();
   renderTabs();
   renderStatusOptions();
   renderRecords();
@@ -350,8 +711,9 @@ function renderTabs() {
   const tabs = definitions.map((definition) => {
     const button = element("button", "dataset-tab");
     button.type = "button";
+    button.setAttribute("role", "tab");
     button.dataset.dataset = definition.name;
-    button.setAttribute("aria-pressed", String(state.dataset === definition.name));
+    button.setAttribute("aria-selected", String(state.dataset === definition.name));
     append(button, document.createTextNode(definition.label), element("span", "", definition.count));
     button.addEventListener("click", () => {
       chooseDataset(definition.name);
@@ -370,6 +732,7 @@ function renderStatusOptions() {
   );
   if (state.status !== "all" && !statuses.includes(state.status)) state.status = "all";
   const allView = state.dataset === "all";
+  dom.statusLabel.textContent = FILTER_LABELS[state.dataset] || "状态";
   const options = [new Option(allView ? "选择类别后筛选" : "全部状态", "all")];
   statuses.forEach((status) => options.push(new Option(labelStatus(status), status)));
   dom.status.replaceChildren(...options);
@@ -398,7 +761,7 @@ function recordButton(record) {
   append(
     button,
     meta,
-    element("h3", "", record.title),
+    safeTitleElement("h3", "", record.title),
     element("p", "record-item__subtitle", record.subtitle || "—"),
     footer,
   );
@@ -409,11 +772,32 @@ function recordButton(record) {
 function renderRecords() {
   const records = filteredRecords();
   const datasetLabel = state.dataset === "all" ? "全部类别" : getDataset(state.dataset).label;
+  const preset = getQuickView(state.preset);
   dom.count.textContent = `${records.length} 条结果`;
-  dom.context.textContent = `${datasetLabel} · 只读快照`;
+  dom.context.textContent = preset
+    ? `${datasetLabel} · 快捷任务：${preset.title}`
+    : `${datasetLabel} · 只读快照`;
+  dom.activePreset.hidden = !preset;
+  if (preset) {
+    const clear = element("button", "", "退出快捷任务");
+    clear.type = "button";
+    clear.addEventListener("click", () => {
+      state.preset = null;
+      renderQuickViews();
+      renderRecords();
+    });
+    dom.activePreset.replaceChildren(
+      document.createTextNode(`当前快捷任务：${preset.title} · ${records.length} 条`),
+      clear,
+    );
+  } else {
+    dom.activePreset.replaceChildren();
+  }
   dom.clear.hidden = !(
-    state.dataset !== "all" || state.status !== "all" || state.riskOnly || state.query
+    state.status !== "all" || state.riskOnly || state.query || state.preset || state.sort !== "id"
   );
+  dom.exportCsv.disabled = records.length === 0;
+  dom.copyViewLink.disabled = records.length === 0;
 
   if (!records.length) {
     const empty = element("div", "empty-results");
@@ -467,14 +851,45 @@ async function copyRecordId(id) {
   }
 }
 
+function downloadText(filename, text, type) {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function downloadRecord(record) {
+  downloadText(
+    `${record.id}.json`,
+    `${JSON.stringify(record.record, null, 2)}\n`,
+    "application/json;charset=utf-8",
+  );
+}
+
+function downloadFullSnapshot() {
+  if (!state.payload) return;
+  downloadText(
+    `MitoEvidence-专家标注集-${state.payload.summary.total_records}条.json`,
+    `${JSON.stringify(state.payload, null, 2)}\n`,
+    "application/json;charset=utf-8",
+  );
+  showToast(`已导出 ${state.payload.summary.total_records} 条核验记录`);
+}
+
 function selectRecord(record, userInitiated = false) {
   state.selectedKey = recordKey(record);
-  updateHash(record);
+  updateHash(record, userInitiated);
   dom.list.querySelectorAll(".record-item").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.key === state.selectedKey));
   });
   renderDetail(record);
   if (userInitiated && window.matchMedia("(max-width: 760px)").matches) {
+    document.body.classList.add("mobile-detail-open");
     dom.detail.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
@@ -490,9 +905,76 @@ function detailHeader(record) {
   const copy = element("button", "quiet-button", "复制 ID");
   copy.type = "button";
   copy.addEventListener("click", () => copyRecordId(record.id));
-  append(actions, source, copy);
+  const download = element("button", "quiet-button", "下载 JSON");
+  download.type = "button";
+  download.addEventListener("click", () => downloadRecord(record));
+  const print = element("button", "quiet-button", "打印 / PDF");
+  print.type = "button";
+  print.addEventListener("click", () => window.print());
+  append(actions, source, copy, download, print);
   append(top, element("span", "detail-kicker", `${record.datasetMeta.label} · ${record.id}`), actions);
+  append(
+    header,
+    top,
+    safeTitleElement("h2", "", record.title),
+    element("p", "detail-subtitle", record.subtitle || record.datasetMeta.description),
+    recordSummary(record),
+  );
+  if (record.risk_flags.length) {
+    header.append(chipRow(record.risk_flags, "risk"));
+  }
+  return header;
+}
 
+function recordSummary(record) {
+  const row = record.record;
+  const summary = element("div", "record-summary");
+  const facts = element("div", "record-summary__facts");
+  let explanation = "这条记录用于定义评测与证据使用边界。";
+  if (record.dataset === "pilot_questions") {
+    append(
+      facts,
+      statusPill(row.answerability),
+      chip(`${row.required_claims?.length || 0} 条必需主张`),
+      chip(
+        row.evidence_papers?.length && row.evidence_spans?.length
+          ? "证据锚点已绑定"
+          : "证据尚未闭环",
+        row.evidence_papers?.length && row.evidence_spans?.length ? "default" : "risk",
+      ),
+    );
+    explanation = "先按本题可回答性、必需主张和禁止推断确定答案边界，再回到原始论文补齐锚点。";
+  } else if (record.dataset === "claim_reviews") {
+    const usable = row.usable_for_beta_cell_evidence;
+    append(
+      facts,
+      statusPill(row.ai_decision),
+      confidencePill(row.ai_confidence),
+      chip(
+        usable === true ? "β 细胞证据：可用" : usable === false ? "β 细胞证据：不可用" : "β 细胞证据：未确定",
+        usable === true ? "default" : usable === false ? "risk" : "neutral",
+      ),
+    );
+    explanation = row.ai_reasoning || explanation;
+  } else if (record.dataset === "terminology_rules") {
+    append(facts, statusPill(row.detector), confidencePill(row.ai_confidence), chip(row.category));
+    explanation = row.why || explanation;
+  } else if (record.dataset === "review_pool") {
+    append(
+      facts,
+      statusPill(row.fulltext?.status),
+      chip(`${row.bibliography?.year || "年份未知"}`),
+      chip(`${row.reference_count || 0} 条参考文献条目`, "neutral"),
+    );
+    explanation = row.recommended_uses?.[0] || row.pool_role || explanation;
+  }
+  append(summary, facts, paragraph(explanation));
+  return summary;
+}
+
+function provenanceDetails(record) {
+  const details = element("details", "provenance-details");
+  details.append(element("summary", "", "查看标注身份、历史字段与文件哈希"));
   const strip = element("div", "provenance-strip");
   const provenance = [
     ["快照层指定", `项目负责人确认的单一汇总参考（${state.payload.manifest.designation}）`],
@@ -505,17 +987,97 @@ function detailHeader(record) {
     append(cell, element("span", "", label), element("strong", "", displayValue(value)));
     strip.append(cell);
   });
-  append(
-    header,
-    top,
-    element("h2", "", record.title),
-    element("p", "detail-subtitle", record.subtitle || record.datasetMeta.description),
-    strip,
-  );
-  if (record.risk_flags.length) {
-    header.append(chipRow(record.risk_flags, "risk"));
+  details.append(strip);
+  return details;
+}
+
+function navigateToRecord(record) {
+  state.dataset = record.dataset;
+  state.status = "all";
+  state.riskOnly = false;
+  state.preset = null;
+  state.query = "";
+  state.selectedKey = recordKey(record);
+  updateHash(record, true);
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    document.body.classList.add("mobile-detail-open");
   }
-  return header;
+  dom.search.value = "";
+  dom.risk.checked = false;
+  renderQuickViews();
+  renderTabs();
+  renderStatusOptions();
+  renderRecords();
+  document.querySelector("#review")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function crossLinkButton(record, context) {
+  const button = element("button", "cross-link");
+  button.type = "button";
+  button.setAttribute("aria-label", `打开 ${record.id} ${record.title}`);
+  append(
+    button,
+    element("span", "cross-link__id", record.id),
+    element("span", "cross-link__title", context || record.title),
+    element("span", "cross-link__arrow", "→"),
+  );
+  button.addEventListener("click", () => navigateToRecord(record));
+  return button;
+}
+
+function relatedRecords(record) {
+  const records = allRecords();
+  if (record.dataset === "pilot_questions") {
+    const pmids = new Set(
+      (record.record.source_reviews || [])
+        .map((value) => String(value).match(/^PMID:(.+)$/)?.[1])
+        .filter(Boolean),
+    );
+    return records
+      .filter(
+        (candidate) =>
+          candidate.dataset === "review_pool" &&
+          pmids.has(String(candidate.record.bibliography?.pmid || "")),
+      )
+      .map((candidate) => ({ record: candidate, context: `综述来源 · PMID ${candidate.record.bibliography.pmid}` }));
+  }
+  if (record.dataset === "claim_reviews") {
+    return records
+      .filter(
+        (candidate) =>
+          candidate.dataset === "terminology_rules" &&
+          (candidate.record.observed_in_local_corpus || []).includes(record.record.statement_id),
+      )
+      .map((candidate) => ({ record: candidate, context: `命中该 Claim 的规则 · ${candidate.record.category}` }));
+  }
+  if (record.dataset === "terminology_rules") {
+    const statementIds = new Set(record.record.observed_in_local_corpus || []);
+    return records
+      .filter(
+        (candidate) =>
+          candidate.dataset === "claim_reviews" && statementIds.has(candidate.record.statement_id),
+      )
+      .map((candidate) => ({ record: candidate, context: `本地实例 · ${candidate.record.triple}` }));
+  }
+  if (record.dataset === "review_pool") {
+    const pmid = String(record.record.bibliography?.pmid || "");
+    return records
+      .filter(
+        (candidate) =>
+          candidate.dataset === "pilot_questions" &&
+          (candidate.record.source_reviews || []).includes(`PMID:${pmid}`),
+      )
+      .map((candidate) => ({ record: candidate, context: `引用该综述的 Pilot · ${candidate.record.question_type}` }));
+  }
+  return [];
+}
+
+function relatedSection(record) {
+  const related = relatedRecords(record);
+  if (!related.length) return null;
+  const links = element("div", "cross-links");
+  related.forEach((item) => links.append(crossLinkButton(item.record, item.context)));
+  return section("跨表关联", `${related.length} 条稳定 ID 对应`, links);
 }
 
 function renderPilot(record) {
@@ -577,7 +1139,10 @@ function mobileDetailNavigation(record) {
   const index = records.findIndex((candidate) => recordKey(candidate) === recordKey(record));
   const back = element("button", "quiet-button", "← 返回列表");
   back.type = "button";
-  back.addEventListener("click", () => dom.list.scrollIntoView({ behavior: "smooth", block: "start" }));
+  back.addEventListener("click", () => {
+    document.body.classList.remove("mobile-detail-open");
+    document.querySelector("#records")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   const paging = element("div", "mobile-detail-nav__paging");
   const previous = element("button", "quiet-button", "上一条");
   const next = element("button", "quiet-button", "下一条");
@@ -620,20 +1185,20 @@ function renderClaim(record) {
   }
   return [
     section("候选关系", "仅表达被审记录，不自动等同于事实", triple),
+    section("完整判定理由", "单一汇总结果", factGrid([
+      ["结论", labelStatus(row.ai_decision)],
+      ["置信度", labelStatus(row.ai_confidence)],
+      ["可用于 β 细胞证据", row.usable_for_beta_cell_evidence],
+      ["缺陷代码", displayValue(row.defect_codes)],
+    ]), paragraph(row.ai_reasoning)),
+    section("实验条件", `${Object.keys(row.recorded_conditions || {}).length} 个字段`, objectCards(row.recorded_conditions, "条件字段为空；跨模型复用存在风险")),
+    section("原始证据片段", "引用仅供审阅，不代表已通过准入", quote(row.evidence_text)),
     section("来源定位", "论文与段落", factGrid([
       ["论文", row.paper_short],
       ["Statement ID", row.statement_id],
       ["Paper ID", row.paper_id],
-      ["来源类型 / 章节", `${displayValue(row.source_type)} / ${displayValue(row.section)}`],
+      ["来源类型 / 章节", `${formatCode(row.source_type)} / ${formatCode(row.section)}`],
     ])),
-    section("原始证据片段", "引用仅供审阅，不代表已通过准入", quote(row.evidence_text)),
-    section("实验条件", `${Object.keys(row.recorded_conditions || {}).length} 个字段`, objectCards(row.recorded_conditions, "条件字段为空；跨模型复用存在风险")),
-    section("准入判断", "单一汇总结果", factGrid([
-      ["结论", labelStatus(row.ai_decision)],
-      ["置信度", row.ai_confidence],
-      ["可用于 β 细胞证据", row.usable_for_beta_cell_evidence],
-      ["缺陷代码", displayValue(row.defect_codes)],
-    ]), paragraph(row.ai_reasoning)),
     section("建议修改", "不自动写回源记录", objectCards(row.suggested_edits, "未提供修改建议")),
     section("保留待核事项", `${row.needs_human_verification?.length || 0} 项`, listCard(row.needs_human_verification)),
   ];
@@ -658,7 +1223,7 @@ function renderTerm(record) {
       ["类别", row.category],
       ["检测方式", labelStatus(row.detector)],
       ["关联评分维度", displayValue(row.maps_to_dimension)],
-      ["置信度", row.ai_confidence],
+      ["置信度", labelStatus(row.ai_confidence)],
     ])),
     section("本地语料命中", observed === null ? "状态未知" : `${observed.length} 条`, observedContent),
     section("保留待核事项", `${row.needs_human_verification?.length || 0} 项`, listCard(row.needs_human_verification)),
@@ -685,8 +1250,8 @@ function renderReview(record) {
   return [
     section("文献身份", "稳定标识与年份", citation),
     section("候选池定位", "综述用于导航，具体实验结论仍应回溯原始研究", factGrid([
-      ["池内角色", row.pool_role],
-      ["纳入判断", row.ai_decision],
+      ["池内角色", formatCode(row.pool_role)],
+      ["纳入判断", formatCode(row.ai_decision)],
       ["参考文献数", row.reference_count],
       ["Manifest 序号", row.source_manifest_index],
     ]), chipRow(row.coverage)),
@@ -721,12 +1286,15 @@ function renderDetail(record) {
     renderEmptyDetail("此数据类别尚无展示模板");
     return;
   }
-  dom.detail.replaceChildren(
+  const nodes = [
     mobileDetailNavigation(record),
     detailHeader(record),
     ...renderer(record),
+    relatedSection(record),
+    provenanceDetails(record),
     rawRecord(record),
-  );
+  ].filter(Boolean);
+  dom.detail.replaceChildren(...nodes);
 }
 
 function applyHashSelection() {
@@ -740,8 +1308,74 @@ function applyHashSelection() {
   state.status = "all";
   state.query = "";
   state.riskOnly = false;
+  state.preset = null;
+  state.sort = "id";
   state.selectedKey = recordKey(match);
   return true;
+}
+
+function csvCell(value) {
+  let text = value === null || value === undefined
+    ? ""
+    : typeof value === "object"
+      ? JSON.stringify(value)
+      : String(value);
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function exportFilteredCsv() {
+  const records = filteredRecords();
+  const headers = [
+    "dataset",
+    "id",
+    "status",
+    "confidence",
+    "title",
+    "risk_flags",
+    "source_path",
+    "source_line",
+    "record_json",
+  ];
+  const lines = [headers.map(csvCell).join(",")];
+  records.forEach((record) => {
+    lines.push(
+      [
+        record.dataset,
+        record.id,
+        record.status,
+        record.confidence,
+        record.title,
+        record.risk_flags.join(" | "),
+        record.source_path,
+        record.source_line,
+        record.record,
+      ].map(csvCell).join(","),
+    );
+  });
+  downloadText(
+    `MitoEvidence-标注筛选-${records.length}条.csv`,
+    `\ufeff${lines.join("\r\n")}\r\n`,
+    "text/csv;charset=utf-8",
+  );
+  showToast(`已导出 ${records.length} 条记录`);
+}
+
+async function copyCurrentLink() {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    showToast("已复制当前记录链接");
+  } catch (_error) {
+    showToast("浏览器未授权复制，请从地址栏复制");
+  }
+}
+
+function openProvenanceDialog() {
+  if (typeof dom.provenanceDialog.showModal === "function") {
+    dom.provenanceDialog.showModal();
+  } else {
+    dom.provenanceDialog.setAttribute("open", "");
+  }
 }
 
 function bindControls() {
@@ -753,6 +1387,8 @@ function bindControls() {
   dom.status.addEventListener("change", (event) => {
     if (!state.payload) return;
     state.status = event.target.value;
+    state.preset = null;
+    renderQuickViews();
     renderRecords();
   });
   dom.risk.addEventListener("change", (event) => {
@@ -760,25 +1396,31 @@ function bindControls() {
     state.riskOnly = event.target.checked;
     renderRecords();
   });
+  dom.sort.addEventListener("change", (event) => {
+    if (!state.payload) return;
+    state.sort = event.target.value;
+    renderRecords();
+  });
   dom.clear.addEventListener("click", () => {
     if (!state.payload) return;
-    state.dataset = "all";
     state.status = "all";
     state.riskOnly = false;
+    state.preset = null;
+    state.sort = "id";
     state.query = "";
     dom.search.value = "";
     dom.risk.checked = false;
+    dom.sort.value = "id";
+    renderQuickViews();
     renderTabs();
     renderStatusOptions();
     renderRecords();
   });
-  dom.provenanceButton.addEventListener("click", () => {
-    if (typeof dom.provenanceDialog.showModal === "function") {
-      dom.provenanceDialog.showModal();
-    } else {
-      dom.provenanceDialog.setAttribute("open", "");
-    }
-  });
+  dom.provenanceButton.addEventListener("click", openProvenanceDialog);
+  dom.scopeNote.addEventListener("click", openProvenanceDialog);
+  dom.downloadJson.addEventListener("click", downloadFullSnapshot);
+  dom.exportCsv.addEventListener("click", exportFilteredCsv);
+  dom.copyViewLink.addEventListener("click", copyCurrentLink);
   document.addEventListener("keydown", (event) => {
     const tag = document.activeElement?.tagName?.toLowerCase();
     const editable = ["input", "textarea", "select"].includes(tag) || document.activeElement?.isContentEditable;
@@ -792,13 +1434,30 @@ function bindControls() {
       renderRecords();
     }
   });
-  window.addEventListener("hashchange", () => {
+  const restoreFromLocation = () => {
+    if (
+      window.location.protocol === "file:" &&
+      fileHashWrittenByApp !== null &&
+      window.location.hash === fileHashWrittenByApp
+    ) {
+      fileHashWrittenByApp = null;
+      return;
+    }
     if (!state.payload || !applyHashSelection()) return;
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      document.body.classList.add("mobile-detail-open");
+    }
     dom.search.value = "";
     dom.risk.checked = false;
+    dom.sort.value = "id";
+    renderQuickViews();
     renderTabs();
     renderStatusOptions();
     renderRecords();
+  };
+  window.addEventListener("hashchange", restoreFromLocation);
+  window.addEventListener("popstate", () => {
+    if (window.location.protocol !== "file:") restoreFromLocation();
   });
 }
 
@@ -806,6 +1465,10 @@ function setControlsDisabled(disabled) {
   dom.search.disabled = disabled;
   dom.risk.disabled = disabled;
   dom.clear.disabled = disabled;
+  dom.sort.disabled = disabled;
+  dom.downloadJson.disabled = disabled;
+  dom.exportCsv.disabled = disabled;
+  dom.copyViewLink.disabled = disabled;
   if (disabled) dom.status.disabled = true;
 }
 
@@ -826,17 +1489,28 @@ async function start() {
   setControlsDisabled(true);
   bindControls();
   try {
-    const response = await fetch(DATA_URL, { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}：${response.statusText}`);
-    state.payload = await response.json();
-    if (state.payload.schema_version !== "mitoevidence.annotation-review-site.v1") {
+    if (window.__MITOEVIDENCE_ANNOTATIONS__) {
+      state.payload = window.__MITOEVIDENCE_ANNOTATIONS__;
+    } else {
+      const response = await fetch(DATA_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}：${response.statusText}`);
+      state.payload = await response.json();
+    }
+    if (state.payload.schema_version !== "mitoevidence.annotation-review-site.v2") {
       throw new Error(`不支持的数据版本：${state.payload.schema_version || "missing"}`);
     }
     dom.date.textContent = formatDate(state.payload.manifest.confirmed_at);
     dom.hash.textContent = `manifest ${state.payload.manifest_sha256.slice(0, 12)}…`;
     setControlsDisabled(false);
-    applyHashSelection();
+    const restoredFromHash = applyHashSelection();
+    if (restoredFromHash && window.matchMedia("(max-width: 760px)").matches) {
+      document.body.classList.add("mobile-detail-open");
+    }
+    renderFlow();
     renderMetrics();
+    renderCoverage();
+    renderDistributions();
+    renderQuickViews();
     renderTabs();
     renderStatusOptions();
     renderRecords();

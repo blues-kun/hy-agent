@@ -6,15 +6,15 @@
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f5f1e7" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <title>MitoEvidence 标注审阅台</title>
+    <title>MitoEvidence β 细胞线粒体专家标注集</title>
     <meta
       name="description"
-      content="浏览 MitoEvidence 的 127 条 Pilot、Claim、术语与综述池参考记录，并核查来源、风险和证据边界。"
+      content="一页浏览 MitoEvidence 的 127 条人工确认汇总标注：研究问题、证据主张、写作规则与种子综述。"
     />
-    <meta property="og:title" content="MitoEvidence 标注审阅台" />
+    <meta property="og:title" content="MitoEvidence β 细胞线粒体专家标注集" />
     <meta
       property="og:description"
-      content="127 条参考记录 · 来源与证据边界透明呈现"
+      content="5 个问题 · 50 条主张 · 60 条规则 · 12 篇综述"
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://blues-kun.github.io/hy-agent/" />
@@ -23,10 +23,10 @@
       content="https://blues-kun.github.io/hy-agent/og.png"
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="MitoEvidence 标注审阅台" />
+    <meta name="twitter:title" content="MitoEvidence β 细胞线粒体专家标注集" />
     <meta
       name="twitter:description"
-      content="127 条参考记录 · 来源与证据边界透明呈现"
+      content="5 个问题 · 50 条主张 · 60 条规则 · 12 篇综述"
     />
     <meta
       name="twitter:image"
@@ -39,7 +39,7 @@
 
     <header class="topbar">
       <div class="topbar__inner">
-        <a class="brand" href="./" aria-label="MitoEvidence 标注审阅台首页">
+        <a class="brand" href="./" aria-label="MitoEvidence 专家标注集首页">
           <span class="brand__mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" role="img">
               <path d="M12 3 4.8 7.1 12 11.2l7.2-4.1L12 3Z" />
@@ -49,16 +49,22 @@
           </span>
           <span>
             <strong>MitoEvidence</strong>
-            <small>标注审阅台</small>
+            <small>β 细胞线粒体专家标注集</small>
           </span>
         </a>
-        <nav class="topnav" aria-label="外部链接">
+        <nav class="section-nav" aria-label="页面导航">
+          <a href="#overview">数据总览</a>
+          <a href="#quality">质量画像</a>
+          <a href="#review">逐条审阅</a>
+        </nav>
+        <nav class="topnav" aria-label="项目链接">
+          <button class="topnav__button" id="provenance-more" type="button">数据口径</button>
           <a
             id="manifest-link"
             href="https://github.com/blues-kun/hy-agent/blob/main/annotation_prelabel/expert_gold_manifest.json"
             target="_blank"
             rel="noreferrer"
-          >仓库当前 manifest</a>
+          >Manifest</a>
           <a
             class="topnav__primary"
             href="https://github.com/blues-kun/hy-agent"
@@ -70,50 +76,136 @@
     </header>
 
     <main class="page-shell">
-      <section class="intro" aria-labelledby="page-title">
-        <div>
-          <p class="eyebrow">Evidence review workspace</p>
-          <h1 id="page-title">让每条参考记录的来源与边界一眼可见</h1>
-          <p class="intro__copy">
-            集中浏览 Pilot、Claim、术语规则和综述池记录。页面只读展示冻结快照，不会在浏览器中改写金标。
+      <section class="hero" id="overview" aria-labelledby="page-title">
+        <div class="hero__copy">
+          <p class="eyebrow">Human-curated reference set · read only</p>
+          <h1 id="page-title">β 细胞线粒体<br />专家标注集</h1>
+          <p class="hero__lead" id="hero-summary">
+            正在核验研究问题、证据主张、写作规则与种子综述……
           </p>
-        </div>
-        <div class="snapshot-seal" aria-label="快照状态">
-          <span class="snapshot-seal__dot" aria-hidden="true"></span>
-          <div>
-            <strong id="snapshot-date">正在核验快照</strong>
-            <span id="manifest-hash">读取 manifest…</span>
+          <div class="hero__badges" aria-label="数据属性">
+            <span>单一专家汇总结果</span>
+            <span>逐文件哈希核验</span>
+            <span>只读展示</span>
+          </div>
+          <div class="hero__actions">
+            <a class="primary-action" href="#review">开始逐条审阅</a>
+            <a class="secondary-action" href="#quality">先看质量画像</a>
+            <a
+              class="secondary-action"
+              id="offline-html-download"
+              href="./mitoevidence-annotation-review.html"
+              download="MitoEvidence-专家标注集.html"
+            >下载离线 HTML</a>
           </div>
         </div>
-      </section>
-
-      <section class="provenance-banner" aria-labelledby="provenance-title">
-        <span class="provenance-banner__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" role="img">
-            <path d="M12 3.5 21 19H3L12 3.5Z" />
-            <path d="M12 9v4.5M12 17h.01" />
-          </svg>
-        </span>
-        <div>
-          <h2 id="provenance-title">这里同时保留两层来源信息</h2>
-          <p>
-            Manifest 将当前快照指定为项目可用的 <code>expert_consensus_gold</code>；源 JSONL
-            仍记录历史字段 <code>AI预标 / ai_prelabel_pending_human</code>。页面不会把后者伪装成独立 A/B 专家逐项审核。
-          </p>
+        <div class="hero__panel" aria-label="标注流程">
+          <div class="snapshot-seal" aria-label="快照状态">
+            <span class="snapshot-seal__dot" aria-hidden="true"></span>
+            <div>
+              <strong id="snapshot-date">正在核验快照</strong>
+              <span id="manifest-hash">读取 manifest…</span>
+            </div>
+          </div>
+          <div class="annotation-flow" id="annotation-flow" aria-label="四类标注流程">
+            <div class="flow-placeholder">正在载入标注流程…</div>
+          </div>
+          <button class="scope-note" id="scope-note" type="button">
+            <span>ⓘ</span>
+            <span><strong>口径提示</strong>：没有独立专家 A/B 列，不能计算专家间一致性。</span>
+          </button>
         </div>
-        <button class="text-button" id="provenance-more" type="button">查看说明</button>
       </section>
 
-      <section class="metrics" id="metrics" aria-label="数据概览">
-        <article class="metric metric--total">
-          <span>全部参考记录</span>
-          <strong>—</strong>
-          <small>等待数据</small>
-        </article>
+      <section class="overview-section" aria-labelledby="overview-title">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Dataset map</p>
+            <h2 id="overview-title">四类标注，各自解决一个科研问题</h2>
+          </div>
+          <p>点击任意卡片即可进入对应记录；数量和结论均由冻结 JSONL 动态计算。</p>
+        </div>
+        <div class="metrics" id="metrics" aria-label="数据概览">
+          <article class="metric metric--total">
+            <span>全部参考记录</span>
+            <strong>—</strong>
+            <small>等待数据</small>
+          </article>
+        </div>
       </section>
 
-      <section class="review-surface" aria-label="标注记录浏览器">
+      <section class="quality-section" id="quality" aria-labelledby="quality-title">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Evidence readiness</p>
+            <h2 id="quality-title">质量画像：展示覆盖，不制造总分</h2>
+          </div>
+          <p>四类数据的用途和分母不同，因此分别报告字段覆盖与判定分布，不合成为“准确率”。</p>
+        </div>
+        <div class="quality-grid">
+          <article class="insight-card insight-card--coverage">
+            <header>
+              <span class="insight-card__index">01</span>
+              <div>
+                <h3>证据就绪度</h3>
+                <p>字段覆盖情况，不是质量得分</p>
+              </div>
+            </header>
+            <div id="coverage-bars" class="coverage-bars" aria-live="polite"></div>
+          </article>
+          <article class="insight-card insight-card--distribution">
+            <header>
+              <span class="insight-card__index">02</span>
+              <div>
+                <h3>判定分布</h3>
+                <p>每一行只在本类别内部解释</p>
+              </div>
+            </header>
+            <div id="distribution-panels" class="distribution-panels" aria-live="polite"></div>
+          </article>
+        </div>
+        <div class="boundary-grid" aria-label="重要解释边界">
+          <article>
+            <strong>Accept ≠ β 细胞可用</strong>
+            <p>Claim 的准入结论与“能否用于 β 细胞证据”是两个独立字段。</p>
+          </article>
+          <article>
+            <strong>Detector=human ≠ 标注来源</strong>
+            <p>它表示该规则建议由人工判断，并不表示存在第二位独立标注者。</p>
+          </article>
+          <article>
+            <strong><span id="reference-total">—</span> ≠ 去重论文数</strong>
+            <p>这是 12 篇综述的参考文献条目总和，跨综述可能重复。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="quick-section" aria-labelledby="quick-title">
+        <div class="section-intro section-intro--compact">
+          <div>
+            <p class="eyebrow">Review shortcuts</p>
+            <h2 id="quick-title">从明确任务开始，而不是面对 127 条记录</h2>
+          </div>
+          <p>快捷入口与下方搜索共用同一套筛选状态，不会改变任何金标。</p>
+        </div>
+        <div class="quick-views" id="quick-views" aria-label="快捷审阅入口"></div>
+      </section>
+
+      <section class="review-section" id="review" aria-labelledby="review-title">
+        <div class="section-intro review-section__intro">
+          <div>
+            <p class="eyebrow">Record explorer</p>
+            <h2 id="review-title">逐条查看结论、证据与使用边界</h2>
+          </div>
+          <div class="review-downloads">
+            <button id="download-json" type="button" disabled>下载完整 JSON</button>
+            <button id="export-csv" type="button" disabled>导出当前筛选 CSV</button>
+          </div>
+        </div>
+
+        <section class="review-surface" aria-label="标注记录浏览器">
         <div class="dataset-tabs" id="dataset-tabs" role="tablist" aria-label="数据类别"></div>
+        <div class="active-preset" id="active-preset" hidden></div>
 
         <div class="toolbar">
           <label class="search-box" for="search-input">
@@ -134,16 +226,30 @@
           </label>
           <div class="toolbar__filters">
             <label class="select-control">
-              <span>类别内状态</span>
+              <span id="status-filter-label">选择类别后筛选</span>
               <select id="status-filter" aria-label="按当前类别的状态筛选" disabled>
                 <option value="all">全部状态</option>
               </select>
             </label>
-            <label class="focus-toggle">
-              <input id="risk-filter" type="checkbox" disabled />
-              <span class="focus-toggle__visual" aria-hidden="true"></span>
-              只看有审阅提示
-            </label>
+            <details class="advanced-filters">
+              <summary>更多工具</summary>
+              <div class="advanced-filters__panel">
+                <label class="select-control select-control--stacked">
+                  <span>排序</span>
+                  <select id="sort-order" disabled>
+                    <option value="id">按记录 ID</option>
+                    <option value="risk">审阅提示多的优先</option>
+                    <option value="title">按标题</option>
+                  </select>
+                </label>
+                <label class="focus-toggle">
+                  <input id="risk-filter" type="checkbox" disabled />
+                  <span class="focus-toggle__visual" aria-hidden="true"></span>
+                  只看有审阅提示
+                </label>
+                <button class="tool-button" id="copy-view-link" type="button" disabled>复制当前记录链接</button>
+              </div>
+            </details>
           </div>
         </div>
 
@@ -172,23 +278,34 @@
             </div>
           </article>
         </div>
+        </section>
       </section>
     </main>
 
     <dialog class="provenance-dialog" id="provenance-dialog" aria-labelledby="provenance-dialog-title">
       <form method="dialog">
         <button class="dialog-close" aria-label="关闭说明">×</button>
-        <p class="eyebrow">Provenance note</p>
-        <h2 id="provenance-dialog-title">为什么页面同时显示“金标指定”和“AI 预标字段”？</h2>
-        <p>
-          项目负责人确认这四份 JSONL 是本轮唯一可用参考，因此 manifest 在快照层将其指定为
-          <code>expert_consensus_gold</code>。为了不改写历史，记录中的 <code>annotator</code>、
-          <code>review_status</code> 和 <code>ai_*</code> 字段保持原值。
-        </p>
-        <p>
-          这不代表存在两名独立专家标签，也不能据此计算专家间 κ 或 ICC。所有风险标签仅用于提示审阅，
-          不会自动改变源数据结论。
-        </p>
+        <p class="eyebrow">Dataset guide</p>
+        <h2 id="provenance-dialog-title">如何理解这 <span id="dialog-total">127</span> 条人工确认汇总标注？</h2>
+        <div class="dialog-grid">
+          <section>
+            <strong>项目级身份</strong>
+            <p>项目负责人确认四份 JSONL 是本轮唯一可用参考；Manifest 将快照指定为 <code>expert_consensus_gold</code>。</p>
+          </section>
+          <section>
+            <strong>专家结构</strong>
+            <p>每条只有一个汇总结论，没有专家 A/B 的独立列，不能计算专家间 κ、ICC 或一致率。</p>
+          </section>
+          <section>
+            <strong>历史字段</strong>
+            <p><code>annotator</code>、<code>review_status</code> 与 <code>ai_*</code> 保留原值，用于追溯字段历史，不覆盖 Manifest 认定。</p>
+          </section>
+          <section>
+            <strong>空值语义</strong>
+            <p><code>null</code> 表示尚未记录或未知；空数组表示字段已存在但当前无条目；两者不会被页面混为 0。</p>
+          </section>
+        </div>
+        <p class="dialog-footnote">页面中的“审阅提示”用于指出证据缺口或使用边界，不表示记录错误，也不会自动修改源数据。</p>
         <button class="dialog-confirm" value="close">我知道了</button>
       </form>
     </dialog>
@@ -197,7 +314,13 @@
 
     <footer>
       <span>MitoEvidence · Ground every claim. Trace every source.</span>
-      <span>只读展示 · 数据以仓库 JSONL 与 manifest 为准</span>
+      <nav aria-label="页脚导航">
+        <a href="#overview">总览</a>
+        <a href="#quality">质量画像</a>
+        <a href="#review">逐条审阅</a>
+        <a href="https://github.com/blues-kun/hy-agent" target="_blank" rel="noreferrer">GitHub</a>
+      </nav>
+      <span>只读展示 · 数据以仓库 JSONL 与 Manifest 为准</span>
     </footer>
 
     <script src="./app.js" defer></script>
