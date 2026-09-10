@@ -18,9 +18,9 @@ RP-GRPO（Resolvability-Paired Group Relative Policy Optimization）研究同一
 
 B1/B2 对同一环境的 G 个奖励计算：
 
-\[
+```math
 A^{\mathrm{GRPO}}_{si}=\frac{R_{si}-\bar R_s}{\operatorname{std}_{pop}(R_s)+10^{-8}}.
-\]
+```
 
 B1 每次独立抽取两个任务；B2 使用同一问题族的两侧。同奖励组的优势为零，记录为 `flat_groups`。实现不隐式增加动态采样或不对称裁剪。
 
@@ -28,32 +28,32 @@ B1 每次独立抽取两个任务；B2 使用同一问题族的两侧。同奖�
 
 定义两侧轨迹的配对效用：
 
-\[
+```math
 U_\eta(r_0,r_1)=(1-\eta)\frac{r_0+r_1}{2}+\eta\min(r_0,r_1).
-\]
+```
 
 默认 `η=0.5`。当 `0≤η<1` 时，提高任一侧奖励不会降低效用；目标鼓励两侧分别做对，不要求输出相同答案。
 
 对每条轨迹，与另一侧全部轨迹组合并取平均：
 
-\[
+```math
 Q_{0i}=\frac1G\sum_j U_\eta(R_{0i},R_{1j}),\qquad
 Q_{1j}=\frac1G\sum_i U_\eta(R_{0i},R_{1j}).
-\]
+```
 
 采用同侧 leave-one-out 基线和固定尺度：
 
-\[
+```math
 A^{\mathrm{RP}}_{si}=2\left(Q_{si}-\frac1{G-1}\sum_{k\ne i}Q_{sk}\right).
-\]
+```
 
 `Q` 与基线均停止梯度。G² 个效用值由现有奖励进行算术组合，无需额外环境调用；它们仍只来自 2G 条轨迹。
 
 当 `η=0` 时，上式为固定尺度 LOO：
 
-\[
+```math
 A_{si}=R_{si}-\frac1{G-1}\sum_{k\ne i}R_{sk}.
-\]
+```
 
 因此 η=0 不是带组内标准差归一化的原始 GRPO。RP 优势之后不再进行该归一化，以免抵消配对信号；LOO 对照用于区分优势估计变化与配对目标本身的贡献。
 
@@ -61,13 +61,13 @@ A_{si}=R_{si}-\frac1{G-1}\sum_{k\ne i}R_{sk}.
 
 所有组使用相同 token 比率与裁剪目标：
 
-\[
+```math
 \rho_t=\exp(\log\pi_\theta(a_t|h_t)-\log\pi_{old}(a_t|h_t)),
-\]
+```
 
-\[
+```math
 L=-E[\min(\rho_t A,\operatorname{clip}(\rho_t,1-\epsilon,1+\epsilon)A)]+\beta E[D_t].
-\]
+```
 
 `D_t = exp(ℓ_ref − ℓ_θ) − (ℓ_ref − ℓ_θ) − 1` 为采样 token 的 k3 型 KL 近似，参考为冻结的初始 SFT。默认 `ε=0.2`、`β=0.04`、学习率 `1e-6`。
 

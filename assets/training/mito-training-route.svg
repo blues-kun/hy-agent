@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="556" viewBox="0 0 1200 556" role="img" aria-labelledby="title desc">
+  <title id="title">面向 Hy3 的领域训练与专家反馈路线</title>
+  <desc id="desc">知识库驱动初轮适配，将模型回答及证据说明通过邮件发送给五位医学工作者征求意见，汇总回收修订。核验分支学习专家标签，工具分支学习经过实际执行的操作示范；仅工具分支继续进行 GRPO 与 RP-GRPO。两个分支封装为领域辅助工具，为 Hy3 返回证据、条件和行动建议。五位是征询对象数量，不代表五人逐题共同审核。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M1 1L6 4L1 7" fill="none" stroke="#737373" stroke-width="1.4"/></marker>
+    <style>
+      text{font-family:Inter,"Segoe UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+      .eyebrow{font-size:12px;letter-spacing:1.6px;fill:#737373}
+      .step{font-size:13px;fill:#8a8a8a;font-weight:600}
+      .title{font-size:22px;fill:#171717;font-weight:600}
+      .body{font-size:15px;fill:#5d5d5d}
+      .note{font-size:13px;fill:#737373}
+    </style>
+  </defs>
+  <rect x="1" y="1" width="1198" height="554" rx="16" fill="#fff" stroke="#dedede"/>
+  <text class="eyebrow" x="36" y="39">FOR TENCENT HY3 / DOMAIN ADAPTATION</text>
+  <text class="eyebrow" x="1164" y="39" text-anchor="end">KNOWLEDGE · EXPERTS · SFT · RL</text>
+  <path d="M36 59H1164" stroke="#e8e8e8"/>
+  <g fill="#fafafa" stroke="#d8d8d8">
+    <rect x="36" y="87" width="252" height="229" rx="10"/>
+    <rect x="328" y="87" width="252" height="229" rx="10"/>
+    <rect x="620" y="87" width="252" height="229" rx="10"/>
+  </g>
+  <rect x="912" y="87" width="252" height="229" rx="10" fill="#202020"/>
+  <g class="step"><text x="56" y="119">01 / KNOWLEDGE</text><text x="348" y="119">02 / EXPERT FEEDBACK</text><text x="640" y="119">03 / SUPERVISED LEARNING</text></g>
+  <text x="932" y="119" font-size="13" font-weight="600" fill="#a8a8a8">04 / POLICY OPTIMIZATION</text>
+  <g class="title"><text x="56" y="158">知识库初轮适配</text><text x="348" y="158">医学专家反馈</text><text x="640" y="158">双分支 SFT</text></g>
+  <text x="932" y="158" font-size="22" font-weight="600" fill="#fff">GRPO → RP-GRPO</text>
+  <g class="body">
+    <text x="56" y="201">文献 · 条件 · 来源证据</text>
+    <text x="56" y="232">领域适配与模型初稿</text>
+    <text x="56" y="263">回答附带可核对的依据</text>
+    <text x="348" y="201">邮件征询 5 位医学工作者</text>
+    <text x="348" y="232">回收纠错、条件与改写意见</text>
+    <text x="348" y="263">整理可用于训练的修订</text>
+    <text x="640" y="201">核验分支：专家修订标签</text>
+    <text x="640" y="232">工具分支：实际操作示范</text>
+    <text x="640" y="263">Qwen3-4B · 独立 LoRA</text>
+  </g>
+  <g font-size="15" fill="#dedede">
+    <text x="932" y="201">仅工具策略分支继续 RL</text>
+    <text x="932" y="232">真实调用 · 条件适应</text>
+    <text x="932" y="263">平均收益 + 较弱侧收益</text>
+  </g>
+  <g fill="none" stroke="#737373" stroke-width="1.4" marker-end="url(#arrow)">
+    <path d="M295 208H319"/><path d="M587 208H611"/><path d="M879 208H903"/>
+  </g>
+  <text class="note" x="600" y="350" text-anchor="middle">核验适配器单独接入；工具适配器经执行评测与强化学习后接入。</text>
+  <path d="M36 374H1164" stroke="#e8e8e8"/>
+  <rect x="36" y="397" width="530" height="103" rx="9" fill="#f3f3f3"/>
+  <text x="56" y="429" font-size="19" font-weight="600" fill="#222">封装为领域辅助工具</text>
+  <text class="body" x="56" y="460">证据提示 · 条件约束 · 行动建议 · 来源信息</text>
+  <text class="note" x="56" y="485">训练输出经应用适配层组织，保持任务与证据上下文</text>
+  <rect x="630" y="397" width="534" height="103" rx="9" fill="#f3f3f3"/>
+  <text x="650" y="429" font-size="19" font-weight="600" fill="#222">Hy3 理解与编排 → 科研场景验证</text>
+  <text class="body" x="650" y="460">综合领域提示，选择行动，组织分析与实验方案</text>
+  <text class="note" x="650" y="485">权限、参数与硬约束由服务端校验，工具返回真实结果</text>
+  <path d="M579 448H616" fill="none" stroke="#737373" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text class="note" x="600" y="532" text-anchor="middle">训练与评测优先；以科研应用检验领域小模型对 Hy3 的辅助价值。</text>
+</svg>

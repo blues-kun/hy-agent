@@ -2,6 +2,7 @@
 from pathlib import Path
 import re
 import subprocess
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -48,6 +49,24 @@ def test_homepage_displays_every_gif_once_outside_collapsed_sections():
     assert gif_images(content) == expected
     expanded = re.sub(r"<details\b[^>]*>.*?</details>", "", content, flags=re.S | re.I)
     assert gif_images(expanded) == expected
+
+
+def test_homepage_prioritizes_training_and_keeps_showcase_compact():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    headings = ["## 训练路线与专家标注", "## 微调模型", "## 算法与评测", "## 阶段结果", "## 实际场景与落地"]
+    positions = [content.index(heading) for heading in headings]
+    assert positions == sorted(positions)
+    assert "Qwen3-4B-Instruct-2507" in content
+    assert "五位医学工作者" in content
+    assert "quantitative-report.png" not in content
+    assert "查看量化报告" not in content
+    for name in ("literature-search.gif", "experiment-planning.png", "digital-human.gif"):
+        tag = re.search(r'<img\b[^>]*src="assets/showcase/' + re.escape(name) + r'"[^>]*>', content)
+        assert tag is not None, name
+        width = re.search(r'width="(\d+)"', tag.group())
+        assert width is not None and int(width.group(1)) <= 640, name
+    assert len(re.findall(r"^```math$", content, flags=re.M)) >= 5
+    ET.parse(ROOT / "assets/training/mito-training-route.svg")
 
 
 def test_private_artifacts_are_ignored_but_annotations_are_publishable():
