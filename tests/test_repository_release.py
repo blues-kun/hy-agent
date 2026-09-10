@@ -66,6 +66,17 @@ def test_project_access_and_contact_are_at_the_end():
     assert "微信" in last_line and "18299228189" in last_line
 
 
+def test_training_inventory_distinguishes_tasks_actions_and_sft_start():
+    documents = [ROOT / "README.md", ROOT / "docs/training-and-evaluation.md", ROOT / "mito/rp_grpo/README.md"]
+    for document in documents:
+        content = document.read_text(encoding="utf-8")
+        for value in ("268 个", "134 对", "74 个", "37 对", "5,370", "1,282",
+                      "911 条", "333 条完整轨迹", "247 条", "91 条完整轨迹",
+                      "SFT100", "SFT400"):
+            assert value in content, (document, value)
+        assert "旧" in content and "443" in content and "51" in content
+
+
 def test_homepage_prioritizes_training_and_keeps_showcase_compact():
     content = (ROOT / "README.md").read_text(encoding="utf-8")
     headings = ["## 训练路线与专家标注", "## 微调模型", "## 算法与评测", "## 阶段结果", "## 知识图谱与机制发现", "## 实际场景与落地"]
@@ -75,7 +86,7 @@ def test_homepage_prioritizes_training_and_keeps_showcase_compact():
     assert "五位医学工作者" in content
     assert "quantitative-report.png" not in content
     assert "查看量化报告" not in content
-    for name in ("literature-search.gif", "experiment-planning.png", "digital-human.gif"):
+    for name in ("literature-search.gif", "experiment-planning.png", "mechanism-hypotheses.png"):
         tag = re.search(r'<img\b[^>]*src="assets/showcase/' + re.escape(name) + r'"[^>]*>', content)
         assert tag is not None, name
         width = re.search(r'width="(\d+)"', tag.group())
@@ -83,6 +94,24 @@ def test_homepage_prioritizes_training_and_keeps_showcase_compact():
     assert len(re.findall(r"^```math$", content, flags=re.M)) >= 5
     ET.parse(ROOT / "assets/training/mito-training-route.svg")
     ET.parse(ROOT / "assets/mito-mechanism-loop.svg")
+
+
+def test_homepage_image_tables_use_column_relative_widths():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    image_tables = [table for table in re.findall(r"<table\b[^>]*>.*?</table>", content, flags=re.S | re.I)
+                    if "<img" in table]
+    assert len(image_tables) == 4
+    for table in image_tables:
+        cells = re.findall(r"<td\b[^>]*>.*?</td>", table, flags=re.S | re.I)
+        for cell in cells:
+            images = re.findall(r"<img\b[^>]*>", cell, flags=re.I)
+            if not images:
+                continue
+            assert 'width="50%"' in cell.split(">", 1)[0]
+            # GitHub transfers GIF widths to an animated-image wrapper;
+            # fixed pixel widths can force both columns past the viewport.
+            for image in images:
+                assert 'width="100%"' in image, image
 
 
 def test_math_avoids_github_renderer_incompatibilities():

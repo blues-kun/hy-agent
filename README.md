@@ -50,7 +50,22 @@
 | 相关性是否被写成因果，结论是否过度确定 | 因果状态、不确定性、错误类型与严重度 |
 | 应当怎样解释和改写 | 判定理由 `rationale` 与合格改写 `corrected_text` |
 
-已公开核验训练集 **443 条主张 / 43 道题**，开发集 **51 条主张 / 5 道题**。输入为问题、证据摘要、实验条件和待核验主张，输出为 `labels + rationale + corrected_text`。五位指邮件征询对象，公开记录仍按原有逐条来源管理；工具执行示范不标为专家亲自操作的轨迹。
+旧专家主张核验数据以问题、证据摘要、实验条件和待核验主张为输入，输出 `labels + rationale + corrected_text`。五位指邮件征询对象，公开记录仍按原有逐条来源管理；工具执行示范不标为专家亲自操作的轨迹。
+
+### 数据规模与训练口径
+
+**443 / 51 只是旧主张核验数据，不是当前训练数据总量。** 本轮按项目实际文件与训练配置的核对汇总，分别记录以下数据层：
+
+| 数据层 | 训练集 | 开发集 | 用途 |
+| :--- | :--- | :--- | :--- |
+| 旧专家主张核验 | 443 条主张 / 43 题 | 51 条主张 / 5 题 | 根据给定证据判断主张 |
+| **当前工具任务** | **268 个任务 / 134 对** | **74 个任务 / 37 对** | 本轮四组 RL 的任务池 |
+| 工具 SFT 原始动作 | 5,370 条 | 1,282 条 | 两条规则路线实际执行工具后生成 |
+| **工具 SFT 实际保留** | **911 条动作 / 333 条完整轨迹** | **247 条动作 / 91 条完整轨迹** | 经过 6 步预算与 8,192-token 长度过滤 |
+| 文献原文 | 399 段 / 15 篇论文 | 93 段 / 4 篇论文 | 可检索、读取的证据 |
+| 测量快照 | 35 行 | 40 行 | 数值查询与汇总 |
+
+任务、动作、轨迹与证据来源不能相加为独立标注量。268 个训练任务按问题文本去重后有 **119 种问题表述**，重点覆盖检索、引用、材料与条件对照、工具纠错、数值汇总和缺证据处理。工具任务按原文匹配与数值规则评分，不等同于新增专家科学结论标注。
 
 初轮知识适配的“原文自监督”与“模型生成样例自训练”分开定义，公式和标注流转见[训练与评测说明](docs/training-and-evaluation.md)。
 
@@ -63,6 +78,8 @@
 | **证据核验小模型** | BF16 LoRA · 专家修订 SFT | 主张支持、条件匹配、错误解释与必要改写 | [Verifier SFT](mito/code/train_verifier.py) |
 | **工具策略小模型** | BF16 LoRA · Tool SFT → GRPO / RP-GRPO | 根据真实返回选择工具、参数、继续或停止 | [Tool SFT](mito/rp_grpo/train_planner_sft.py) · [RL](mito/rp_grpo/train_policy.py) |
 | **Hy3 主模型** | 调用领域辅助工具，不在本仓库微调 | 理解目标、综合提示与约束、编排执行并组织结果 | [应用接入](mito/rp_grpo/INTERFACES.md#应用接入) |
+
+**本轮工具策略链路：Qwen3-4B → 旧工具 SFT → 本轮 SFT100 → 四组 RL（B1 / B2 / LOO / B3）。** SFT100 使用过滤后的 911 条训练动作；SFT400 是单独的训练时长对照，当前 RL 仍从 SFT100 初始化。旧工具 SFT 的 234 条轨迹、936 次助手动作属于历史审计记录，单独保留。
 
 两个 SFT 入口默认使用 **LoRA r=16、α=32、dropout=0.05，最大上下文 8,192 tokens**；正式 RL 从通过执行验证的工具 SFT 适配器继续，冻结同一起点作为 KL 参考。配置默认值与具体实验运行记录分别管理。
 
@@ -253,7 +270,7 @@ RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排�
 </table>
 
 <p align="center">
-  <a href="assets/showcase/mechanism-hypotheses.png"><img src="assets/showcase/mechanism-hypotheses.png" width="820" alt="机制焦点：围绕线粒体展示文献关系、RotatE 模型候选与人工提出的待验证关联" /></a><br />
+  <a href="assets/showcase/mechanism-hypotheses.png"><img src="assets/showcase/mechanism-hypotheses.png" width="620" alt="机制焦点：围绕线粒体展示文献关系、RotatE 模型候选与人工提出的待验证关联" /></a><br />
   <sub>机制焦点 · 文献关系、模型候选与待验证关联分层查看</sub>
 </p>
 
@@ -270,8 +287,8 @@ RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排�
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="assets/showcase/multimodal-assistant.gif" width="620" alt="多模态科研交互" /></td>
-    <td width="50%" valign="top"><img src="assets/showcase/digital-human.gif" width="620" alt="数字人协同实验" /></td>
+    <td width="50%" valign="top"><img src="assets/showcase/multimodal-assistant.gif" width="100%" alt="多模态科研交互" /></td>
+    <td width="50%" valign="top"><img src="assets/showcase/digital-human.gif" width="100%" alt="数字人协同实验" /></td>
   </tr>
   <tr>
     <td align="center"><sub>多模态科研交互</sub></td>
@@ -288,7 +305,7 @@ hy-agent/
 ├── mito/                    # 核验 SFT、工具 SFT、GRPO / RP-GRPO
 │   ├── code/                # 核验训练、对比与数据导出
 │   ├── rp_grpo/             # 工具环境、策略训练与评测
-│   ├── data/                # 443 条训练主张 / 51 条开发主张
+│   ├── data/                # 旧核验数据：443 条训练主张 / 51 条开发主张
 │   ├── models/              # 基座及后续权重接入说明
 │   └── tests/               # 算法、数据与流程测试
 ├── assets/                  # 训练路线、损失图与原始展示素材
