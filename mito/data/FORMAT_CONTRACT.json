@@ -1,0 +1,208 @@
+{
+  "version": "verifier-label-contract.v1",
+  "source_manual_sections": [
+    "4.2",
+    "4.3",
+    "4.4",
+    "4.5",
+    "4.6",
+    "4.7",
+    "4.8"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "labels",
+    "rationale",
+    "corrected_text"
+  ],
+  "properties": {
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_support",
+        "context_match",
+        "target_causal_status",
+        "uncertainty_expression",
+        "severity",
+        "causal_evidence_in_source_study",
+        "causal_evidence_in_target_experiment",
+        "error_types"
+      ],
+      "properties": {
+        "evidence_support": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "contradicted",
+            "insufficient",
+            "mixed"
+          ],
+          "value_definitions": {
+            "supported": "当前给定证据材料支持该表述，包括已限定条件的支持。",
+            "contradicted": "当前材料与主张明确冲突；仅有条件差异或没有足够证据不等于反驳。",
+            "insufficient": "当前给定材料不足以支持该确定表述，不等于该命题在生物学上为假。",
+            "mixed": "材料含支持与反向或异质证据，或支持不同并行支路但未指认主导，不能归结为单一方向。"
+          }
+        },
+        "context_match": {
+          "type": "string",
+          "enum": [
+            "matched",
+            "partially_matched",
+            "requires_extrapolation",
+            "mismatched",
+            "unknown"
+          ],
+          "value_definitions": {
+            "matched": "物种、细胞、干预、对照、时间、区室、测量对象均对齐，或差异不影响本主张。",
+            "partially_matched": "部分条件对齐，剩余差异已被主张限定。",
+            "requires_extrapolation": "存在跨条件迁移，但主张已加限定或只作候选级表述。",
+            "mismatched": "条件明确不匹配，且主张未加限定。",
+            "unknown": "缺少条件信息，无法核对。"
+          }
+        },
+        "target_causal_status": {
+          "type": "string",
+          "enum": [
+            "not_established",
+            "candidate_supported",
+            "established",
+            "not_applicable",
+            "unknown"
+          ],
+          "value_definitions": {
+            "not_established": "目标实验的因果关系尚未成立。",
+            "candidate_supported": "目标实验已有部分支持，但未排除替代解释。",
+            "established": "目标实验已有干预及中介或拯救证据支持。",
+            "not_applicable": "主张不含因果断言。",
+            "unknown": "无法判断。"
+          }
+        },
+        "uncertainty_expression": {
+          "type": "string",
+          "enum": [
+            "appropriate",
+            "overconfident",
+            "underconfident",
+            "unstated"
+          ],
+          "value_definitions": {
+            "appropriate": "措辞与证据强度匹配。",
+            "overconfident": "措辞确定性超出证据。",
+            "underconfident": "证据充分却一律含糊回避。",
+            "unstated": "任务要求表达不确定性但未表达。"
+          }
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "none",
+            "minor",
+            "major",
+            "critical"
+          ],
+          "value_definitions": {
+            "none": "无科学错误。",
+            "minor": "不改变主要科学判断。",
+            "major": "实质影响结论或下一步实验。",
+            "critical": "捏造关键来源、结果、执行历史，或输出禁止的越界建议。"
+          }
+        },
+        "causal_evidence_in_source_study": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "observational_association",
+              "temporal_order",
+              "intervention",
+              "mediation_test",
+              "rescue_experiment",
+              "none"
+            ]
+          },
+          "value_definitions": {
+            "observational_association": "观察关联",
+            "temporal_order": "时间先后",
+            "intervention": "干预",
+            "mediation_test": "中介检验",
+            "rescue_experiment": "拯救实验",
+            "none": "无此类证据"
+          },
+          "description": "可多选。来源研究与目标实验分别填写，禁止把来源干预当作目标实验已经做过的干预。"
+        },
+        "causal_evidence_in_target_experiment": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "observational_association",
+              "temporal_order",
+              "intervention",
+              "mediation_test",
+              "rescue_experiment",
+              "none"
+            ]
+          },
+          "value_definitions": {
+            "observational_association": "观察关联",
+            "temporal_order": "时间先后",
+            "intervention": "干预",
+            "mediation_test": "中介检验",
+            "rescue_experiment": "拯救实验",
+            "none": "无此类证据"
+          },
+          "description": "可多选。来源研究与目标实验分别填写，禁止把来源干预当作目标实验已经做过的干预。"
+        },
+        "error_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "fabricated_source",
+              "fabricated_result",
+              "citation_mismatch",
+              "direction_error",
+              "context_mismatch",
+              "measurement_mismatch",
+              "causal_overclaim",
+              "ignored_counterevidence",
+              "inappropriate_stop",
+              "unacknowledged_context_extrapolation",
+              "other"
+            ]
+          },
+          "value_definitions": {
+            "fabricated_source": "捏造来源",
+            "fabricated_result": "捏造结果或执行历史",
+            "citation_mismatch": "引用与所述内容不对应",
+            "direction_error": "方向或上下游角色反转",
+            "context_mismatch": "条件不匹配且未限定",
+            "measurement_mismatch": "指标、测量对象或区室偷换",
+            "causal_overclaim": "因果表述超出证据",
+            "ignored_counterevidence": "忽略反向或边界材料",
+            "inappropriate_stop": "不当停止或将检索缺口误报为不存在",
+            "unacknowledged_context_extrapolation": "未声明的条件外推",
+            "other": "其他错误，必须在rationale说明具体类型"
+          },
+          "description": "可多选；无错误时为空列表。"
+        }
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "description": "简短说明判定依据，定位给定材料与条件；不新增外部来源。"
+    },
+    "corrected_text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "error_types非空时提供合格改写；原句已合格时为null。"
+    }
+  },
+  "interpretation": "支持判断仅针对当前材料，不针对全世界文献。条件异质性先记录context_match，不自动视为contradicted。建议类主张评其在给定材料下是否合理，而非把建议当已验证实验结果。",
+  "output_rules": "只输出一个JSON对象，不加Markdown围栏或额外正文。所有字段均必填；枚举值、字段名用上述英文；理由和改写可用中文。这里列出全部合法选项，不提供任何单题答案示例。"
+}

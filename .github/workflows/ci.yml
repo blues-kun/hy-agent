@@ -1,0 +1,28 @@
+name: Public source checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cpu-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: mito/requirements-test.txt
+      - name: Install CPU test dependencies
+        run: python -m pip install -r mito/requirements-test.txt
+      - name: Run public tests without model weights or internal snapshots
+        run: python -m pytest -q -p no:cacheprovider
+      - name: Verify historical annotation page
+        run: python scripts/build_annotation_review_site.py --check
+      - name: Check browser script syntax
+        run: node --check review_site/app.js

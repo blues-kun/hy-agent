@@ -448,7 +448,7 @@ def build_payload(repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "repository": "blues-kun/hy-agent",
         "manifest": manifest,
-        "manifest_path": str(manifest_path.relative_to(repo_root)),
+        "manifest_path": manifest_path.relative_to(repo_root).as_posix(),
         "manifest_sha256": _sha256(manifest_path),
         "summary": {
             "total_records": total,

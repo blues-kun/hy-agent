@@ -1,0 +1,17 @@
+* text=auto eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.svg text eol=lf
+
+# Frozen annotations and their manifests are hashed byte-for-byte.
+*.jsonl -text
+*.json -text
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary

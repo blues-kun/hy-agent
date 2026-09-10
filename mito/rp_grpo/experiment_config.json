@@ -1,0 +1,88 @@
+{
+  "schema": "mito.rp-experiment.v1",
+  "status": "source_release_final_rl_weights_pending",
+  "main_arms": {
+    "B0": {
+      "label": "SFT + fixed scientific rules",
+      "trainable": false,
+      "purpose": "Are fixed rules sufficient?"
+    },
+    "B1": {
+      "label": "SFT + original GRPO",
+      "trainable": true,
+      "purpose": "Baseline RL on independently sampled tasks"
+    },
+    "B2": {
+      "label": "GRPO + the same paired data",
+      "trainable": true,
+      "purpose": "Does pairing the training data itself help?"
+    },
+    "B3": {
+      "label": "RP-GRPO eta > 0 + the same paired data",
+      "trainable": true,
+      "purpose": "Does the paired utility add benefit?"
+    }
+  },
+  "attribution_control": {
+    "arm": "LOO",
+    "eta": 0,
+    "required_for_algorithm_claim": true
+  },
+  "shared": {
+    "group_size_per_environment": 4,
+    "environment_groups_per_update": 2,
+    "max_turns": 6,
+    "max_new_tokens_per_action": 512,
+    "max_context_tokens": 8192,
+    "learning_rate": 0.000001,
+    "clip_epsilon": 0.2,
+    "beta": 0.04,
+    "eta_B3": 0.5,
+    "max_steps_engineering_default": 12,
+    "max_seconds_engineering_default": 1800,
+    "seeds": [
+      20260909,
+      20260910,
+      20260911
+    ]
+  },
+  "frozen_comparisons": [
+    "same exact base, tokenizer and initial SFT adapter",
+    "same schema, prompts, data partitions, scorer, and inference budget",
+    "B2/B3/LOO use the same paired task scheduler and seeds",
+    "B1 samples independent tasks from the same eligible pool; no unreported extra data",
+    "count actual generated tokens, tool calls and elapsed wall time; not only update steps",
+    "environment logical cost is a declared proxy, not measured cloud billing",
+    "B0 original model actions and each rule intervention must be recorded separately"
+  ],
+  "evaluation": {
+    "available_split": "dev",
+    "fresh_heldout_test_included": false,
+    "required_before_generalization_claim": "Create independent task/source/experiment families before tuning; freeze the protocol and hold out their labels.",
+    "primary_metrics": [
+      "paired_both_sides_success",
+      "end_to_end_success",
+      "false_support_or_invalid_measurement"
+    ],
+    "secondary_metrics": [
+      "answerable_success",
+      "scoped_insufficient_success",
+      "invalid_arguments",
+      "feedback_recovery",
+      "premature_stop",
+      "tool_calls",
+      "cost_proxy",
+      "elapsed_seconds",
+      "generated_tokens"
+    ],
+    "statistical_unit": "original task/source/experiment family; not tool steps or G-squared utility cells"
+  },
+  "scientific_scope": "The RL environment implements exact-source extraction and finite snapshot statistics. Semantic or causal labels require an independently specified task and scorer.",
+  "distribution": {
+    "verifier_annotations": "Included under mito/data",
+    "rp_snapshots": "External data required; see rp_grpo/data/README.md",
+    "base_model": "External local model required",
+    "initial_sft_adapter": "External or locally trained adapter required for RL",
+    "final_rl_weights": "To be added in a future release"
+  }
+}

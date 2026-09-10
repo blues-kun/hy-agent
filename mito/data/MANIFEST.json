@@ -1,0 +1,63 @@
+{
+  "schema_version": "mito.public-annotations.v1",
+  "data_role": "expert_evidence_summary_conditioned",
+  "training_files": [
+    "train.jsonl"
+  ],
+  "evaluation_files": [
+    "dev.jsonl"
+  ],
+  "test_exported": false,
+  "new_expert_approval": false,
+  "publication_transform": {
+    "changed_field": "metadata.original_record.file",
+    "operation": "retain source basename; remove internal absolute directory",
+    "prompt_completion_labels_preserved": true,
+    "original_record_hashes_preserved": true
+  },
+  "source_files": {
+    "train.jsonl": {
+      "sha256": "047dffa6a1a0df30bbf9074b74a30a1a1bac7497989c3f9395578ea7c34dc4c2",
+      "bytes": 7009263
+    },
+    "dev.jsonl": {
+      "sha256": "74941e22b1ab4ac17bda5962e738446f3015af8c2599819adc0a8ad2b6f72b9e",
+      "bytes": 772397
+    }
+  },
+  "files": {
+    "train.jsonl": {
+      "sha256": "1123a5148e6df90b4de4d4a1c6f9b4a6a1a4417b921a11a2f751ae7b12c64d8f",
+      "bytes": 6962092
+    },
+    "dev.jsonl": {
+      "sha256": "cd61f65994827166b844e4865468e849222b733d6deed28c87da25d1ae91b66d",
+      "bytes": 766175
+    },
+    "FORMAT_CONTRACT.json": {
+      "sha256": "892d8e42beed27125275e87b7511d792c50391a12c2211521e0a120dbde1dcc2",
+      "bytes": 7846
+    }
+  },
+  "counts": {
+    "train": {
+      "records": 443,
+      "independent_tasks": 43,
+      "evidence_support": {
+        "contradicted": 56,
+        "insufficient": 149,
+        "mixed": 5,
+        "supported": 233
+      }
+    },
+    "dev": {
+      "records": 51,
+      "independent_tasks": 5,
+      "evidence_support": {
+        "contradicted": 8,
+        "insufficient": 10,
+        "supported": 33
+      }
+    }
+  }
+}

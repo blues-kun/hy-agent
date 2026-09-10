@@ -1,11 +1,20 @@
-# 虚拟环境
+# Local environments and Python/tool caches
 .venv/
 venv/
 env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
 
-# 密钥与本地配置：仓库只提交 .env.example
+# Credentials and machine-specific configuration
 .env
-.env.local
 .env.*
 !.env.example
 .envrc
@@ -13,40 +22,50 @@ env/
 *.pem
 *.p12
 *.pfx
-id_rsa
-id_rsa.*
+id_rsa*
+id_ed25519*
 credentials.json
 secrets.yaml
 secrets.yml
-
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.eggs/
-build/
-dist/
-
-# 测试与工具缓存
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# 运行产物：评测结果与原始请求响应落盘（体量大且可重生成）
-results/
-!docs/results/
-!docs/results/**
-eval/results/
-!eval/data/.gitkeep
-
-# 受版权限制的全文：仓库只发布标识符与必要短证据（方案 15 节）
-data/fulltext/
-eval/data/corpus_raw/
-*.pdf
-
-# 编辑器与系统
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
+
+# Model weights are published separately, never as ordinary Git blobs
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.gguf
+*.onnx
+/mito/models/*
+!/mito/models/README.md
+/mito/rp_grpo/checkpoints/*
+!/mito/rp_grpo/checkpoints/README.md
+
+# Internal full-text / measurement snapshots and execution traces
+/mito/rp_grpo/data/*
+!/mito/rp_grpo/data/README.md
+/mito/data/*
+!/mito/data/README.md
+!/mito/data/FORMAT_CONTRACT.json
+!/mito/data/MANIFEST.json
+!/mito/data/train.jsonl
+!/mito/data/dev.jsonl
+/mito/audit/
+/mito/PACKAGE.json
+/mito/SHA256SUMS
+/mito/rp_grpo/SFT_GATE.json
+/mito/rp_grpo/SFT_READINESS.md
+runs/
+results/
+outputs/
+wandb/
+tensorboard/
+*.log
+*.tar
+*.tar.gz
+*.zip
+.local/

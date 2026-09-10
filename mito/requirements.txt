@@ -1,0 +1,13 @@
+# Python 3.12. Install torch==2.9.0 from the cu128 index separately.
+# Versions observed in the local CPU-contract-tested training environment.
+# This is not an offline wheelhouse and does not install an NVIDIA driver.
+transformers==5.13.0
+trl==1.9.2
+peft==0.20.0
+datasets==4.8.4
+accelerate==1.14.0
+safetensors==0.8.0
+tokenizers==0.22.2
+huggingface_hub==1.26.0
+numpy==2.5.1
+pytest==9.1.1

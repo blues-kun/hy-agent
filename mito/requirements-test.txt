@@ -1,0 +1,2 @@
+# Public CPU contracts; no model downloads or CUDA dependencies.
+pytest>=8.3,<10

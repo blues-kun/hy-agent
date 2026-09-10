@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="448" viewBox="0 0 1200 448" role="img" aria-labelledby="title desc">
+  <title id="title">MITO Agent 研究流程</title>
+  <desc id="desc">采样成像、表型解析、证据与机制、实验规划、湿实验验证，再将反馈带回分析。工具策略 SFT 与 RP-GRPO、独立证据核验 SFT 支撑模型接入。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#555" stroke-width="1.2"/></marker>
+    <style>
+      text{font-family:Inter,"Segoe UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+      .label{font-size:12px;letter-spacing:2px;fill:#737373}
+      .title{font-size:23px;font-weight:600;fill:#171717}
+      .body{font-size:15px;fill:#626262}
+      .num{font-size:13px;fill:#898989;font-weight:600}
+    </style>
+  </defs>
+  <rect x="1" y="1" width="1198" height="446" rx="16" fill="#fff" stroke="#dedede"/>
+  <text class="label" x="36" y="41">MITO AGENT / RESEARCH WORKFLOW</text>
+  <text x="1164" y="41" text-anchor="end" class="label">IMAGING → EVIDENCE → EXPERIMENT</text>
+  <path d="M36 61H1164" stroke="#e8e8e8"/>
+  <g fill="#fafafa" stroke="#d8d8d8">
+    <rect x="36" y="88" width="200" height="154" rx="10"/>
+    <rect x="268" y="88" width="200" height="154" rx="10"/>
+    <rect x="500" y="88" width="200" height="154" rx="10"/>
+    <rect x="732" y="88" width="200" height="154" rx="10"/>
+  </g>
+  <rect x="964" y="88" width="200" height="154" rx="10" fill="#202020"/>
+  <g class="num"><text x="56" y="116">01</text><text x="288" y="116">02</text><text x="520" y="116">03</text><text x="752" y="116">04</text></g>
+  <text x="984" y="116" font-size="13" fill="#a5a5a5">05</text>
+  <g class="title"><text x="56" y="152">采样成像</text><text x="288" y="152">表型解析</text><text x="520" y="152">证据与机制</text><text x="752" y="152">实验规划</text></g>
+  <text x="984" y="152" font-size="23" font-weight="600" fill="#fff">湿实验验证</text>
+  <g class="body">
+    <text x="56" y="188">胰岛样本 · 显微图像</text><text x="56" y="213">数据与实验条件</text>
+    <text x="288" y="188">降噪 · 分割 · 量化</text><text x="288" y="213">形态与功能报告</text>
+    <text x="520" y="188">文献检索 · 关系图谱</text><text x="520" y="213">证据核验 · 候选假设</text>
+    <text x="752" y="188">对照 · 重复 · 验证路径</text><text x="752" y="213">研究者修订与确认</text>
+  </g>
+  <g font-size="15" fill="#ccc"><text x="984" y="188">实验观察与结果</text><text x="984" y="213">更新证据与假设</text></g>
+  <g fill="none" stroke="#555" stroke-width="1.4" marker-end="url(#arrow)">
+    <path d="M241 165H261"/><path d="M473 165H493"/><path d="M705 165H725"/><path d="M937 165H957"/>
+    <path d="M1064 248V282Q1064 290 1056 290H376Q368 290 368 282V249" stroke-dasharray="4 5"/>
+  </g>
+  <rect x="588" y="277" width="204" height="26" rx="13" fill="#fff"/>
+  <text x="690" y="295" text-anchor="middle" font-size="14" fill="#626262">实验反馈 → 下一轮分析</text>
+  <path d="M36 323H1164" stroke="#e8e8e8"/>
+  <text class="label" x="36" y="354">MODEL TRAINING</text>
+  <text class="body" x="36" y="392">独立训练 · 分工接入</text>
+  <rect x="268" y="344" width="432" height="69" rx="8" fill="#f6f6f6"/>
+  <text x="288" y="369" font-size="16" font-weight="600" fill="#222">工具策略 / Tool SFT → RP-GRPO</text>
+  <text x="288" y="394" font-size="14" fill="#737373">取证、分析、修复与停止决策</text>
+  <rect x="732" y="344" width="432" height="69" rx="8" fill="#f6f6f6"/>
+  <text x="752" y="369" font-size="16" font-weight="600" fill="#222">证据核验 / Verifier SFT</text>
+  <text x="752" y="394" font-size="14" fill="#737373">主张支持、条件匹配与必要改写</text>
+</svg>
