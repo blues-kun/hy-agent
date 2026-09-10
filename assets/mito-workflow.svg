@@ -29,7 +29,7 @@
   <g class="body">
     <text x="56" y="188">胰岛样本 · 显微图像</text><text x="56" y="213">数据与实验条件</text>
     <text x="288" y="188">降噪 · 分割 · 量化</text><text x="288" y="213">形态与功能报告</text>
-    <text x="520" y="188">文献检索 · 关系图谱</text><text x="520" y="213">证据核验 · 候选假设</text>
+    <text x="520" y="188">文献图谱 · RotatE 预测</text><text x="520" y="213">证据复核 · 机制假设</text>
     <text x="752" y="188">对照 · 重复 · 验证路径</text><text x="752" y="213">研究者修订与确认</text>
   </g>
   <g font-size="15" fill="#ccc"><text x="984" y="188">实验观察与结果</text><text x="984" y="213">更新证据与假设</text></g>
@@ -44,7 +44,7 @@
   <text class="body" x="36" y="392">独立训练 · 分工接入</text>
   <rect x="268" y="344" width="432" height="69" rx="8" fill="#f6f6f6"/>
   <text x="288" y="369" font-size="16" font-weight="600" fill="#222">工具策略 / Tool SFT → RP-GRPO</text>
-  <text x="288" y="394" font-size="14" fill="#737373">取证、分析、修复与停止决策</text>
+  <text x="288" y="394" font-size="14" fill="#737373">专家反馈 · 取证、分析与停止决策</text>
   <rect x="732" y="344" width="432" height="69" rx="8" fill="#f6f6f6"/>
   <text x="752" y="369" font-size="16" font-weight="600" fill="#222">证据核验 / Verifier SFT</text>
   <text x="752" y="394" font-size="14" fill="#737373">主张支持、条件匹配与必要改写</text>

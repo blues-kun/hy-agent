@@ -11,6 +11,7 @@ def test_documentation_local_links_resolve():
     documents += list((ROOT / "mito").rglob("*.md"))
     documents += list((ROOT / "docs").glob("*.md"))
     documents += list((ROOT / "assets/showcase").glob("*.md"))
+    documents += list((ROOT / "assets/training").glob("*.md"))
     missing = []
     for document in documents:
         content = document.read_text(encoding="utf-8")
