@@ -37,9 +37,11 @@ def test_showcase_contains_all_original_media():
     assert (ROOT / "assets/showcase/digital-human.gif").is_file()
 
 
-def test_homepage_displays_every_gif_once_outside_collapsed_sections():
+def test_homepage_displays_selected_gifs_and_preserves_original_gallery():
     content = (ROOT / "README.md").read_text(encoding="utf-8")
-    expected = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "assets/showcase").glob("*.gif"))
+    # The user replaced the generic knowledge-Q&A GIF with the mechanism view.
+    expected = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "assets/showcase").glob("*.gif")
+                      if p.name != "knowledge-assistant.gif")
 
     def gif_images(markup):
         targets = re.findall(r'!\[[^\]]*\]\(([^)]+)\)', markup)
@@ -49,6 +51,19 @@ def test_homepage_displays_every_gif_once_outside_collapsed_sections():
     assert gif_images(content) == expected
     expanded = re.sub(r"<details\b[^>]*>.*?</details>", "", content, flags=re.S | re.I)
     assert gif_images(expanded) == expected
+    assert "knowledge-assistant.gif" not in content
+    assert content.count('src="assets/showcase/mechanism-hypotheses.png"') == 1
+    gallery = (ROOT / "assets/showcase/README.md").read_text(encoding="utf-8")
+    assert gif_images(gallery) == sorted(p.name for p in (ROOT / "assets/showcase").glob("*.gif"))
+
+
+def test_project_access_and_contact_are_at_the_end():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    project_url = "https://agent.blueskun.com:8444/"
+    assert content.count(project_url) == 1
+    last_line = content.strip().splitlines()[-1]
+    assert project_url in last_line
+    assert "微信" in last_line and "18299228189" in last_line
 
 
 def test_homepage_prioritizes_training_and_keeps_showcase_compact():

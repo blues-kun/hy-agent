@@ -36,15 +36,15 @@
 | --- | --- |
 | ![知识图谱](knowledge-graph.png) | ![大小模型协同](model-collaboration.png) |
 
-候选机制与文献证据的关联展示。
+机制焦点围绕线粒体展示文献关系、RotatE 模型候选与人工提出的待验证关联。图中 OPP／蛋白合成卡片属于人工假设，与模型候选分别记录。
 
-![机制假设](mechanism-hypotheses.png)
+![机制焦点：文献关系、模型候选与待验证关联](mechanism-hypotheses.png)
 
 | 实验观察记录 | 基于证据与规则的实验规划 |
 | --- | --- |
 | ![实验观察](experimental-observation.png) | ![实验方案](experiment-planning.png) |
 
-OPP 荧光、线粒体荧光及细胞核融合图。
+OPP 荧光、线粒体荧光及细胞核融合图；对应已有实验观察，不作为 RotatE 候选的验证成绩。
 
 ![湿实验成像](wet-lab-imaging.png)
 

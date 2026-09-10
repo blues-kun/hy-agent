@@ -9,7 +9,7 @@
 [![Hy3](https://img.shields.io/badge/For_Tencent-Hy3-171717?style=flat-square)](#项目思路)
 [![Model](https://img.shields.io/badge/Small_Model-Qwen3--4B-404040?style=flat-square)](#微调模型)
 [![Training](https://img.shields.io/badge/Training-SFT_·_RP--GRPO-666666?style=flat-square)](mito/)
-[![Application](https://img.shields.io/badge/MITO_Agent-在线体验-888888?style=flat-square)](https://agent.blueskun.com:8444/)
+[![Application](https://img.shields.io/badge/MITO_Agent-科研工作台-888888?style=flat-square)](#实际场景与落地)
 
 <a href="#训练路线与专家标注">训练与标注</a> · <a href="#微调模型">微调模型</a> · <a href="#算法与评测">算法与评测</a> · <a href="#阶段结果">阶段结果</a> · <a href="#知识图谱与机制发现">机制发现</a> · <a href="#实际场景与落地">应用落地</a> · <a href="#代码与数据">代码与数据</a>
 
@@ -181,11 +181,11 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
 
 RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排序。随后核对来源、实验条件、支持与反向证据，形成可区分不同解释的假设；由研究者确认对照、干预和测量方案，开展湿实验。实验的**支持、反驳或未决结果**连同来源和条件回流，经复核更新关系与候选状态，为下一轮预测提供依据。
 
-语言小模型训练与图谱表示学习分别进行，在推理与实验层衔接。当前已导出 732 条候选，候选独立保存；机制复核、湿实验验证与图谱回流按上述闭环设计推进，不将候选数量视为已验证的新机制。数据口径与预测质量见[机制发现策略](docs/mechanism-discovery.md)。
+语言小模型训练与图谱表示学习分别进行，在推理与实验层衔接。当前已导出 **732 条候选**，工作台已展示原文定位、机制焦点、实验记录和方案草稿。后续将候选与对应湿实验逐项关联，接续验证结果与图谱反馈；候选数量不等于已验证的新机制。数据口径与预测质量见[机制发现策略](docs/mechanism-discovery.md)。
 
 ## 实际场景与落地
 
-训练后的领域能力面向线粒体科研工作台：**显微成像 → 表型解析 → 文献与机制 → 实验规划 → 湿实验反馈**。[进入 MITO Agent](https://agent.blueskun.com:8444/)
+训练后的领域能力面向线粒体科研工作台：**显微成像 → 表型解析 → 文献与机制 → 实验规划 → 湿实验反馈**。
 
 <p align="center">
   <img src="assets/mito-workflow.svg" width="900" alt="MITO Agent 科研场景闭环及领域小模型辅助 Hy3 的应用架构" />
@@ -252,32 +252,34 @@ RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排�
   </tr>
 </table>
 
-<table>
-  <tr>
-    <td width="50%"><img src="assets/showcase/knowledge-assistant.gif" width="100%" alt="科研知识问答" /></td>
-    <td width="50%"><img src="assets/showcase/multimodal-assistant.gif" width="100%" alt="多模态科研交互" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>科研知识问答</sub></td>
-    <td align="center"><sub>多模态科研交互</sub></td>
-  </tr>
-</table>
+<p align="center">
+  <a href="assets/showcase/mechanism-hypotheses.png"><img src="assets/showcase/mechanism-hypotheses.png" width="820" alt="机制焦点：围绕线粒体展示文献关系、RotatE 模型候选与人工提出的待验证关联" /></a><br />
+  <sub>机制焦点 · 文献关系、模型候选与待验证关联分层查看</sub>
+</p>
+
+**从候选连接走向机制问题。** 例如，RotatE 输出“线粒体 → 促进 → FoxO1 与自噬基因启动子的结合”，供模型追查支持证据、适用条件与反向解释，再组织可检验的假设。界面中的 OPP／蛋白合成关联另属人工假设，与模型候选分别记录。
 
 ### 03 · 实验规划与数字人协同
 
-围绕研究假设组织对照、独立重复与验证路径；研究者确认方案、执行实验，将观察结果带回下一轮分析。
+围绕研究假设组织对照、独立重复与验证路径；研究者确认方案、执行实验，将观察结果带回下一轮分析。现有工作台已展示实验观察记录与新方案草稿，可衔接“已有观察 → 待检验问题 → 下一轮实验”；草稿与执行结果分开保存。
 
 <p align="center">
   <img src="assets/showcase/experiment-planning.png" width="620" alt="基于证据与规则的实验规划" /><br />
   <sub>实验方案与验证路径</sub>
 </p>
 
-<p align="center">
-  <img src="assets/showcase/digital-human.gif" width="620" alt="数字人协同实验" /><br />
-  <sub>数字人实验协同 · 语音与视觉交互</sub>
-</p>
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="assets/showcase/multimodal-assistant.gif" width="620" alt="多模态科研交互" /></td>
+    <td width="50%" valign="top"><img src="assets/showcase/digital-human.gif" width="620" alt="数字人协同实验" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>多模态科研交互</sub></td>
+    <td align="center"><sub>数字人实验协同 · 语音与视觉交互</sub></td>
+  </tr>
+</table>
 
-首页直接展示全部 **9 个 GIF**；更多场景与原始素材见[完整展示](assets/showcase/README.md)。
+更多场景与全部原始素材见[完整展示](assets/showcase/README.md)。
 
 ## 代码与数据
 
@@ -308,3 +310,5 @@ python -m pytest -q
 ---
 
 <p align="center"><sub>MITO Agent · Domain Training · Expert Feedback · Research Applications</sub></p>
+
+完整项目地址：[MITO Agent](https://agent.blueskun.com:8444/) · 如需账号和密码，请添加微信：**18299228189**。
