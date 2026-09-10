@@ -13,17 +13,17 @@
 如果使用筛选后的文献原文进行自监督继续预训练（CPT），目标来自文本自身：
 
 ```math
-\mathcal L_{\mathrm{CPT}}
+\mathcal{L}_{\mathrm{CPT}}
 =-\frac{1}{N_{\mathrm{token}}}\sum_{x\in D_{\mathrm{KB}}}\sum_t
-\log p_\theta(x_t\mid x_{<t}).
+\log p_\theta(x_t\mid x_{\lt t}).
 ```
 
 如果使用模型根据知识库生成的回答、关系或证据核验初稿作为目标，则属于自训练／伪标签学习，而不是原文 CPT：
 
 ```math
-\mathcal L_{\mathrm{self\text{-}train}}
+\mathcal{L}_{\mathrm{self\text{-}train}}
 =-\frac{1}{N_{\mathrm{target}}}\sum_{(x,\tilde y)}\sum_t
-\log p_\theta(\tilde y_t\mid x,\tilde y_{<t}).
+\log p_\theta(\tilde y_t\mid x,\tilde y_{\lt t}).
 ```
 
 两者必须按实际输入和标签来源命名。以上是初轮知识适配的目标定义；公开训练包提供的是后续核验 SFT、工具 SFT 和策略 RL，不能用其中的 SFT 日志代替未随包提供的 CPT 训练记录。
@@ -58,8 +58,8 @@
 SFT 使用掩码后的 token 交叉熵：
 
 ```math
-\mathcal L_{\mathrm{SFT}}
-=-\frac{1}{\sum_t m_t}\sum_t m_t\log\pi_\theta(y_t\mid x,y_{<t}).
+\mathcal{L}_{\mathrm{SFT}}
+=-\frac{1}{\sum_t m_t}\sum_t m_t\log\pi_\theta(y_t\mid x,y_{\lt t}).
 ```
 
 LoRA 冻结原权重，以低秩增量更新目标层：

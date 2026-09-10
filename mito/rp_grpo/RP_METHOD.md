@@ -19,7 +19,7 @@ RP-GRPO（Resolvability-Paired Group Relative Policy Optimization）研究同一
 B1/B2 对同一环境的 G 个奖励计算：
 
 ```math
-A^{\mathrm{GRPO}}_{si}=\frac{R_{si}-\bar R_s}{\operatorname{std}_{pop}(R_s)+10^{-8}}.
+A^{\mathrm{GRPO}}_{si}=\frac{R_{si}-\bar R_s}{\mathrm{std}_{pop}(R_s)+10^{-8}}.
 ```
 
 B1 每次独立抽取两个任务；B2 使用同一问题族的两侧。同奖励组的优势为零，记录为 `flat_groups`。实现不隐式增加动态采样或不对称裁剪。
@@ -66,7 +66,7 @@ A_{si}=R_{si}-\frac1{G-1}\sum_{k\ne i}R_{sk}.
 ```
 
 ```math
-L=-E[\min(\rho_t A,\operatorname{clip}(\rho_t,1-\epsilon,1+\epsilon)A)]+\beta E[D_t].
+L=-E[\min(\rho_t A,\mathrm{clip}(\rho_t,1-\epsilon,1+\epsilon)A)]+\beta E[D_t].
 ```
 
 `D_t = exp(ℓ_ref − ℓ_θ) − (ℓ_ref − ℓ_θ) − 1` 为采样 token 的 k3 型 KL 近似，参考为冻结的初始 SFT。默认 `ε=0.2`、`β=0.04`、学习率 `1e-6`。

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="384" viewBox="0 0 1200 384" role="img" aria-labelledby="title desc">
+  <title id="title">RotatE 机制发现与湿实验反馈闭环</title>
+  <desc id="desc">以已有知识图谱为起点，RotatE 预测待核实的新关联，Hy3 与领域小模型复核证据、推理机制假设；研究者设计并开展湿实验。支持、反驳或未决结果连同条件与来源回流，经复核更新图谱和候选状态。该图展示闭环设计，候选关系不等于已经验证的机制。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#666" stroke-width="1.2"/></marker>
+    <style>
+      text{font-family:Inter,"Segoe UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+      .label{font-size:12px;letter-spacing:1.7px;fill:#737373}
+      .title{font-size:22px;font-weight:600;fill:#171717}
+      .body{font-size:15px;fill:#626262}
+      .num{font-size:13px;fill:#898989;font-weight:600}
+    </style>
+  </defs>
+  <rect x="1" y="1" width="1198" height="382" rx="16" fill="#fff" stroke="#dedede"/>
+  <text class="label" x="36" y="39">ROTATE / MECHANISM DISCOVERY LOOP</text>
+  <text class="label" x="1164" y="39" text-anchor="end">KNOWLEDGE → HYPOTHESIS → EXPERIMENT</text>
+  <path d="M36 59H1164" stroke="#e8e8e8"/>
+  <g fill="#fafafa" stroke="#d8d8d8">
+    <rect x="36" y="85" width="200" height="153" rx="10"/>
+    <rect x="268" y="85" width="200" height="153" rx="10"/>
+    <rect x="500" y="85" width="200" height="153" rx="10"/>
+    <rect x="732" y="85" width="200" height="153" rx="10"/>
+  </g>
+  <rect x="964" y="85" width="200" height="153" rx="10" fill="#202020"/>
+  <g class="num"><text x="56" y="114">01</text><text x="288" y="114">02</text><text x="520" y="114">03</text><text x="752" y="114">04</text></g>
+  <text x="984" y="114" font-size="13" fill="#a5a5a5">05</text>
+  <g class="title"><text x="56" y="150">知识图谱</text><text x="288" y="150">RotatE 预测</text><text x="520" y="150">机制推理</text><text x="752" y="150">湿实验验证</text></g>
+  <text x="984" y="150" font-size="22" font-weight="600" fill="#fff">证据回流</text>
+  <g class="body">
+    <text x="56" y="187">实体 · 关系 · 来源</text><text x="56" y="213">保留条件与证据版本</text>
+    <text x="288" y="187">复数空间关系映射</text><text x="288" y="213">候选关联 · 同组排名</text>
+    <text x="520" y="187">Hy3 + 领域小模型</text><text x="520" y="213">复核证据 · 形成假设</text>
+    <text x="752" y="187">研究者确认与执行</text><text x="752" y="213">对照 · 干预 · 读出</text>
+  </g>
+  <g font-size="15" fill="#d5d5d5"><text x="984" y="187">支持 · 反驳 · 未决</text><text x="984" y="213">更新关系与候选状态</text></g>
+  <g fill="none" stroke="#666" stroke-width="1.4" marker-end="url(#arrow)">
+    <path d="M242 162H260"/><path d="M474 162H492"/><path d="M706 162H724"/><path d="M938 162H956"/>
+    <path d="M1064 246V274Q1064 283 1055 283H145Q136 283 136 274V246" stroke-dasharray="4 5"/>
+  </g>
+  <rect x="443" y="268" width="314" height="29" rx="14" fill="#fff"/>
+  <text x="600" y="287" text-anchor="middle" font-size="14" fill="#626262">按证据复核与更新，进入下一轮预测</text>
+  <rect x="36" y="318" width="1128" height="39" rx="7" fill="#f4f4f4"/>
+  <text x="600" y="343" text-anchor="middle" font-size="14" fill="#626262">闭环接入设计 · 候选独立存放；实验结果经复核后更新证据，不把预测直接写成事实。</text>
+</svg>

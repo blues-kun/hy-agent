@@ -11,7 +11,7 @@
 [![Training](https://img.shields.io/badge/Training-SFT_·_RP--GRPO-666666?style=flat-square)](mito/)
 [![Application](https://img.shields.io/badge/MITO_Agent-在线体验-888888?style=flat-square)](https://agent.blueskun.com:8444/)
 
-<a href="#训练路线与专家标注">训练与标注</a> · <a href="#微调模型">微调模型</a> · <a href="#算法与评测">算法与评测</a> · <a href="#阶段结果">阶段结果</a> · <a href="#实际场景与落地">应用落地</a> · <a href="#代码与数据">代码与数据</a>
+<a href="#训练路线与专家标注">训练与标注</a> · <a href="#微调模型">微调模型</a> · <a href="#算法与评测">算法与评测</a> · <a href="#阶段结果">阶段结果</a> · <a href="#知识图谱与机制发现">机制发现</a> · <a href="#实际场景与落地">应用落地</a> · <a href="#代码与数据">代码与数据</a>
 
 </div>
 
@@ -73,15 +73,15 @@
 原文自监督继续预训练采用下一 token 预测；模型生成问答作为目标则属于伪标签自训练。专家修订后，SFT 学习经过整理的目标输出。
 
 ```math
-\mathcal L_{\mathrm{CPT}}
+\mathcal{L}_{\mathrm{CPT}}
 =-\frac{1}{N_{\mathrm{token}}}\sum_{x\in D_{\mathrm{KB}}}\sum_t
-\log p_\theta(x_t\mid x_{<t})
+\log p_\theta(x_t\mid x_{\lt t})
 ```
 
 ```math
-\mathcal L_{\mathrm{SFT}}
+\mathcal{L}_{\mathrm{SFT}}
 =-\frac{1}{\sum_t m_t}\sum_t m_t
-\log \pi_\theta(y_t\mid x,y_{<t})
+\log \pi_\theta(y_t\mid x,y_{\lt t})
 ```
 
 `m_t` 只保留要学习的助手输出：核验分支学习专家修订的结构化回答，工具分支学习当前动作 JSON。问题、证据、工具返回和 padding 不计入目标损失。
@@ -92,7 +92,7 @@
 
 ```math
 A^{\mathrm{GRPO}}_{si}
-=\frac{R_{si}-\bar R_s}{\operatorname{std}_{pop}(R_s)+10^{-8}}
+=\frac{R_{si}-\bar R_s}{\mathrm{std}_{pop}(R_s)+10^{-8}}
 ```
 
 基于 GRPO，我们围绕科研任务中的条件变化设计了 **RP-GRPO（Resolvability-Paired GRPO）**，将可解决性配对引入策略优化。它为同一科研目标构造不同可观察条件，例如“原文可取 / 当前材料缺失”“指标可计算 / 必要数据不足”。两侧分别执行真实工具轨迹，以配对效用兼顾平均收益和较弱一侧：
@@ -118,9 +118,9 @@ A^{\mathrm{RP}}_{si}
 
 ```math
 \begin{aligned}
-\mathcal L_{\mathrm{RL}}
-&=\operatorname{mean}\!\left[
--\min\!\left(\rho_t A,\operatorname{clip}(\rho_t,1-\epsilon,1+\epsilon)A\right)
+\mathcal{L}_{\mathrm{RL}}
+&=\mathrm{mean}\!\left[
+-\min\!\left(\rho_t A,\mathrm{clip}(\rho_t,1-\epsilon,1+\epsilon)A\right)
 +\beta D_t\right],\\
 \rho_t&=\frac{\pi_\theta(a_t\mid h_t)}{\pi_{\mathrm{old}}(a_t\mid h_t)},\qquad
 D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
@@ -167,6 +167,22 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
 
 后续继续延长训练，补充多随机种子、独立任务与 Hy3 接入对照，并发布完整运行记录及最终强化学习权重。
 
+## 知识图谱与机制发现
+
+**从已有知识中提出候选关联，再通过推理与实验检验机制。** 在领域模型训练之外，我们将 RotatE 图谱表示学习接入科研推理：从实体与关系中预测待核实的新连接，由 Hy3 结合领域小模型的证据核验与条件约束，组织可检验的机制假设，再进入湿实验验证和证据反馈。
+
+<p align="center">
+  <img src="assets/mito-mechanism-loop.svg" width="100%" alt="知识图谱、RotatE 候选关联、机制推理、湿实验验证、证据回流的闭环设计" />
+</p>
+
+| 已有图谱关系 | RotatE 建模子集 | 导出候选关联 |
+| :---: | :---: | :---: |
+| **2,234** | **379** | **732** |
+
+RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排序。随后核对来源、实验条件、支持与反向证据，形成可区分不同解释的假设；由研究者确认对照、干预和测量方案，开展湿实验。实验的**支持、反驳或未决结果**连同来源和条件回流，经复核更新关系与候选状态，为下一轮预测提供依据。
+
+语言小模型训练与图谱表示学习分别进行，在推理与实验层衔接。当前已导出 732 条候选，候选独立保存；机制复核、湿实验验证与图谱回流按上述闭环设计推进，不将候选数量视为已验证的新机制。数据口径与预测质量见[机制发现策略](docs/mechanism-discovery.md)。
+
 ## 实际场景与落地
 
 训练后的领域能力面向线粒体科研工作台：**显微成像 → 表型解析 → 文献与机制 → 实验规划 → 湿实验反馈**。[进入 MITO Agent](https://agent.blueskun.com:8444/)
@@ -175,11 +191,11 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
   <img src="assets/mito-workflow.svg" width="900" alt="MITO Agent 科研场景闭环及领域小模型辅助 Hy3 的应用架构" />
 </p>
 
-| 胰岛样本 | 线粒体分析 | 知识关系 | 候选关系 |
-| :---: | :---: | :---: | :---: |
-| **378** | **约 12.7 万** | **2,234** | **732** |
+| 胰岛样本 | 线粒体分析 |
+| :---: | :---: |
+| **378** | **约 12.7 万** |
 
-以上为项目材料中的应用规模；图谱候选用于筛选与验证，不是已证实的新机制。工作台展示与小模型训练成绩分别记录，训练模块不等于已完成全部线上接入。
+以上为项目材料中的应用规模。工作台展示与小模型训练成绩分别记录，训练模块不等于已完成全部线上接入。
 
 ### 01 · 线粒体表型解析
 
@@ -223,7 +239,7 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
   <sub>文献检索 · 来源查看 · 辅助阅读</sub>
 </p>
 
-**RotatE → 关系预测 → 机制假设。** 将实体映射到复数向量空间，以关系旋转预测缺失连接，再交由证据复核与实验规划。当前从 2,234 条已有关系中筛选 379 条训练，导出 732 条 Top-3 候选，候选独立保存，不直接写回事实图谱。[机制发现策略](docs/mechanism-discovery.md)
+工作台将文献检索、图谱关系和大小模型协同组织到同一研究上下文，承接[机制发现闭环](#知识图谱与机制发现)中的候选查看、证据复核与假设讨论。
 
 <table>
   <tr>

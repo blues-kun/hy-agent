@@ -53,7 +53,7 @@ def test_homepage_displays_every_gif_once_outside_collapsed_sections():
 
 def test_homepage_prioritizes_training_and_keeps_showcase_compact():
     content = (ROOT / "README.md").read_text(encoding="utf-8")
-    headings = ["## 训练路线与专家标注", "## 微调模型", "## 算法与评测", "## 阶段结果", "## 实际场景与落地"]
+    headings = ["## 训练路线与专家标注", "## 微调模型", "## 算法与评测", "## 阶段结果", "## 知识图谱与机制发现", "## 实际场景与落地"]
     positions = [content.index(heading) for heading in headings]
     assert positions == sorted(positions)
     assert "Qwen3-4B-Instruct-2507" in content
@@ -67,6 +67,18 @@ def test_homepage_prioritizes_training_and_keeps_showcase_compact():
         assert width is not None and int(width.group(1)) <= 640, name
     assert len(re.findall(r"^```math$", content, flags=re.M)) >= 5
     ET.parse(ROOT / "assets/training/mito-training-route.svg")
+    ET.parse(ROOT / "assets/mito-mechanism-loop.svg")
+
+
+def test_math_avoids_github_renderer_incompatibilities():
+    documents = [ROOT / "README.md", ROOT / "docs/training-and-evaluation.md", ROOT / "mito/rp_grpo/RP_METHOD.md"]
+    # GitHub's renderer rejects operatorname and reparses text as HTML before
+    # MathJax; a literal '<' can consume the end of a token-prefix subscript.
+    for document in documents:
+        content = document.read_text(encoding="utf-8")
+        for expression in re.findall(r"```math\n(.*?)\n```", content, flags=re.S):
+            assert r"\operatorname" not in expression, document
+            assert "<" not in expression, document
 
 
 def test_private_artifacts_are_ignored_but_annotations_are_publishable():
