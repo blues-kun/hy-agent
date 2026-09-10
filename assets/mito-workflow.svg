@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="448" viewBox="0 0 1200 448" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="792" viewBox="0 0 1200 792" role="img" aria-labelledby="title desc">
   <title id="title">MITO Agent 研究流程</title>
-  <desc id="desc">采样成像、表型解析、证据与机制、实验规划、湿实验验证，再将反馈带回分析。工具策略 SFT 与 RP-GRPO、独立证据核验 SFT 支撑模型接入。</desc>
+  <desc id="desc">采样成像、表型解析、证据与机制、实验规划、湿实验验证形成研究闭环。核验 SFT 与工具 SFT、专家反馈及 RP-GRPO 分支分别训练，封装为领域辅助工具，向 Hy3 提供证据提示、条件约束和行动建议。Hy3 统一编排，服务端执行工具并校验硬约束，真实结果回到当前任务上下文。目标是降低 Hy3 对领域知识与工具环境的适配成本。</desc>
   <defs>
     <marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#555" stroke-width="1.2"/></marker>
     <style>
@@ -11,7 +11,7 @@
       .num{font-size:13px;fill:#898989;font-weight:600}
     </style>
   </defs>
-  <rect x="1" y="1" width="1198" height="446" rx="16" fill="#fff" stroke="#dedede"/>
+  <rect x="1" y="1" width="1198" height="790" rx="16" fill="#fff" stroke="#dedede"/>
   <text class="label" x="36" y="41">MITO AGENT / RESEARCH WORKFLOW</text>
   <text x="1164" y="41" text-anchor="end" class="label">IMAGING → EVIDENCE → EXPERIMENT</text>
   <path d="M36 61H1164" stroke="#e8e8e8"/>
@@ -40,12 +40,55 @@
   <rect x="588" y="277" width="204" height="26" rx="13" fill="#fff"/>
   <text x="690" y="295" text-anchor="middle" font-size="14" fill="#626262">实验反馈 → 下一轮分析</text>
   <path d="M36 323H1164" stroke="#e8e8e8"/>
-  <text class="label" x="36" y="354">MODEL TRAINING</text>
-  <text class="body" x="36" y="392">独立训练 · 分工接入</text>
-  <rect x="268" y="344" width="432" height="69" rx="8" fill="#f6f6f6"/>
-  <text x="288" y="369" font-size="16" font-weight="600" fill="#222">工具策略 / Tool SFT → RP-GRPO</text>
-  <text x="288" y="394" font-size="14" fill="#737373">专家反馈 · 取证、分析与停止决策</text>
-  <rect x="732" y="344" width="432" height="69" rx="8" fill="#f6f6f6"/>
-  <text x="752" y="369" font-size="16" font-weight="600" fill="#222">证据核验 / Verifier SFT</text>
-  <text x="752" y="394" font-size="14" fill="#737373">主张支持、条件匹配与必要改写</text>
+  <text class="label" x="36" y="358">SMALL MODELS AS TOOLS</text>
+  <text x="1164" y="358" text-anchor="end" font-size="14" fill="#737373">领域训练 → 工具封装 → Hy3 编排</text>
+
+  <g fill="#fafafa" stroke="#d8d8d8">
+    <rect x="36" y="383" width="340" height="254" rx="10"/>
+    <rect x="430" y="383" width="340" height="254" rx="10"/>
+  </g>
+  <rect x="824" y="383" width="340" height="254" rx="10" fill="#202020"/>
+
+  <text x="56" y="420" font-size="20" font-weight="600" fill="#171717">01 · 领域小模型训练</text>
+  <rect x="52" y="440" width="308" height="72" rx="6" fill="#eee"/>
+  <text x="66" y="466" font-size="17" font-weight="600" fill="#222">核验分支 · Verifier SFT</text>
+  <text x="66" y="493" font-size="14" fill="#626262">专家标签 → 主张支持与条件核验</text>
+  <rect x="52" y="524" width="308" height="82" rx="6" fill="#eee"/>
+  <text x="66" y="550" font-size="16" font-weight="600" fill="#222">策略分支 · Tool SFT → RP-GRPO</text>
+  <text x="66" y="577" font-size="14" fill="#626262">工具示范 → 专家反馈 → 真实执行优化</text>
+  <text x="56" y="623" font-size="13" fill="#737373">两类任务分别训练 · 适配器分别管理</text>
+
+  <text x="450" y="420" font-size="20" font-weight="600" fill="#171717">02 · 封装为领域辅助工具</text>
+  <text x="450" y="450" font-size="14" fill="#737373">输入：任务、证据、条件与工具状态</text>
+  <g fill="#eee">
+    <rect x="446" y="467" width="308" height="36" rx="5"/>
+    <rect x="446" y="513" width="308" height="36" rx="5"/>
+    <rect x="446" y="559" width="308" height="36" rx="5"/>
+  </g>
+  <g font-size="15" fill="#333">
+    <text x="460" y="491">证据提示 · 支持片段与来源定位</text>
+    <text x="460" y="537">条件约束 · 适用范围与缺失条件</text>
+    <text x="460" y="583">行动建议 · 补证、修复调用与停止</text>
+  </g>
+  <text x="450" y="623" font-size="13" fill="#737373">结构化返回 → 任务上下文中的提示与约束</text>
+
+  <text x="844" y="420" font-size="20" font-weight="600" fill="#fff">03 · Hy3 主智能体</text>
+  <text x="844" y="450" font-size="14" fill="#bdbdbd">理解任务 · 统一编排 · 综合决策</text>
+  <g font-size="16" fill="#ededed">
+    <text x="844" y="492">调用领域工具，读取专业提示</text>
+    <text x="844" y="538">结合证据与约束，选择下一步</text>
+    <text x="844" y="584">组织解释、分析结果与实验方案</text>
+  </g>
+  <text x="844" y="623" font-size="13" fill="#bdbdbd">知识库与原始工具结果仍可直接接入</text>
+
+  <g fill="none" stroke="#555" stroke-width="1.4" marker-end="url(#arrow)">
+    <path d="M385 518H418"/>
+    <path d="M779 518H812"/>
+    <path d="M994 643V662"/>
+  </g>
+  <rect x="36" y="671" width="1128" height="72" rx="8" fill="#f4f4f4"/>
+  <text x="56" y="701" font-size="17" font-weight="600" fill="#222">环境执行与校验</text>
+  <text x="254" y="698" font-size="15" fill="#555">权限检查 · 参数与单位校验 · 硬约束门控 · 实际工具执行</text>
+  <text x="254" y="725" font-size="14" fill="#737373">真实结果与错误状态 → 返回当前任务上下文，供 Hy3 与小模型工具继续使用</text>
+  <text x="600" y="772" text-anchor="middle" font-size="14" fill="#626262">设计目标：降低 Hy3 的领域与环境适配成本；模型提供建议，服务端落实强制规则。</text>
 </svg>

@@ -36,6 +36,20 @@ def test_showcase_contains_all_original_media():
     assert (ROOT / "assets/showcase/digital-human.gif").is_file()
 
 
+def test_homepage_displays_every_gif_once_outside_collapsed_sections():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    expected = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "assets/showcase").glob("*.gif"))
+
+    def gif_images(markup):
+        targets = re.findall(r'!\[[^\]]*\]\(([^)]+)\)', markup)
+        targets += re.findall(r'<img\b[^>]*\bsrc="([^"]+)"', markup, flags=re.I)
+        return sorted(target for target in targets if target.lower().endswith(".gif"))
+
+    assert gif_images(content) == expected
+    expanded = re.sub(r"<details\b[^>]*>.*?</details>", "", content, flags=re.S | re.I)
+    assert gif_images(expanded) == expected
+
+
 def test_private_artifacts_are_ignored_but_annotations_are_publishable():
     private = ["mito/models/base/model.safetensors", "mito/rp_grpo/checkpoints/old/adapter_config.json",
                "mito/rp_grpo/data/passages.jsonl", "mito/rp_grpo/data/measurements.csv",

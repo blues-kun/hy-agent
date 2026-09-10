@@ -26,7 +26,7 @@ MITO Agent 聚焦胰岛与 β 细胞线粒体研究，将显微成像分析、�
 | 图像降噪、实例分割、形态与功能量化、分析报告 | 语音与视觉交互、说话人识别、实验过程辅助 | 文献检索、图谱关系、证据核验、候选机制与方案草拟 |
 
 <p align="center">
-  <img src="assets/mito-workflow.svg" width="100%" alt="MITO Agent 研究流程：采样成像、表型解析、证据与机制、实验规划、湿实验反馈" />
+  <img src="assets/mito-workflow.svg" width="100%" alt="MITO Agent 研究流程与小模型接入：领域训练、辅助工具封装、Hy3 编排及服务端校验" />
 </p>
 
 ### 当前研究积累
@@ -43,24 +43,57 @@ MITO Agent 聚焦胰岛与 β 细胞线粒体研究，将显微成像分析、�
 
 面向自研成像体系，采用二维结构盲点自监督降噪与融合形态先验的弱监督分割，连接形态、动态及适用的功能指标分析，并生成可检查的图表与报告。
 
+#### 成像采集
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="assets/showcase/islet-multichannel.gif" width="100%" alt="多通道胰岛成像" /></td>
+    <td width="50%" valign="top" align="center">
+      <img src="assets/showcase/imaging-system.gif" width="100%" alt="实际成像系统" /><br />
+      <sub>成像设备与采集过程</sub><br /><br />
+      <img src="assets/showcase/calcium-secretion.gif" width="100%" alt="钙信号与分泌事件时间序列" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><sub>多通道胰岛成像</sub></td>
+    <td align="center"><sub>钙信号与分泌事件时间序列</sub></td>
+  </tr>
+</table>
+
+#### 图像解析
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="assets/showcase/image-analysis.gif" width="100%" alt="图像检查与分割工作流" /></td>
+    <td width="50%" valign="top"><img src="assets/showcase/denoising-interaction.gif" width="100%" alt="原图与处理结果交互比较" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>图像检查与分割工作流</sub></td>
+    <td align="center"><sub>原图与处理结果交互比较</sub></td>
+  </tr>
+</table>
+
 ![线粒体分割比较](assets/showcase/segmentation-comparison.png)
 
 <p align="center"><sub>从左到右：原图、MoDL、Nellie、Omnipose、自研算法。下排为对应局部放大。</sub></p>
 
 <details>
-<summary>查看图像解析工作流与量化报告</summary>
-
-![图像检查与分割工作流](assets/showcase/image-analysis.gif)
+<summary>查看量化报告</summary>
 
 ![线粒体功能量化报告](assets/showcase/quantitative-report.png)
 
-图像工作流展示样本检查、处理建议与分割候选结果；报告示例展示寿命分布与统计汇总。
+报告示例展示寿命分布与统计汇总。
 
 </details>
 
 ### 02 · 文献知识与机制探索
 
 将文献、实体关系和原文证据放在同一研究上下文中。图谱提供关联线索，大模型组织研究问题与解释，小模型承担领域核验；文献事实、模型候选与实验观察分别记录。
+
+<p align="center">
+  <img src="assets/showcase/literature-search.gif" width="100%" alt="文献检索与辅助阅读" /><br />
+  <sub>文献检索 · 来源查看 · 辅助阅读</sub>
+</p>
 
 **RotatE → 关系预测 → 机制假设。** 将图谱实体映射到复数向量空间，以关系旋转预测缺失连接，再将候选送入证据复核与实验规划。[RotatE 原论文](https://arxiv.org/abs/1902.10197)
 
@@ -81,10 +114,19 @@ MITO Agent 聚焦胰岛与 β 细胞线粒体研究，将显微成像分析、�
   </tr>
 </table>
 
-<details>
-<summary>查看文献检索与候选机制</summary>
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="assets/showcase/knowledge-assistant.gif" width="100%" alt="科研知识问答" /></td>
+    <td width="50%" valign="top"><img src="assets/showcase/multimodal-assistant.gif" width="100%" alt="多模态科研交互" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>科研知识问答</sub></td>
+    <td align="center"><sub>多模态科研交互</sub></td>
+  </tr>
+</table>
 
-![文献检索与辅助阅读](assets/showcase/literature-search.gif)
+<details>
+<summary>查看候选机制与来源证据</summary>
 
 ![候选机制与来源证据](assets/showcase/mechanism-hypotheses.png)
 
@@ -96,20 +138,29 @@ MITO Agent 聚焦胰岛与 β 细胞线粒体研究，将显微成像分析、�
 
 ![基于证据与规则的实验规划](assets/showcase/experiment-planning.png)
 
-<details>
-<summary>查看数字人协同实验与湿实验成像</summary>
+<p align="center">
+  <img src="assets/showcase/digital-human.gif" width="100%" alt="数字人协同实验" /><br />
+  <sub>数字人实验协同 · 语音与视觉交互</sub>
+</p>
 
-![数字人协同实验](assets/showcase/digital-human.gif)
+<details>
+<summary>查看湿实验成像</summary>
 
 ![OPP、线粒体与融合成像](assets/showcase/wet-lab-imaging.png)
 
 </details>
 
-全部 **26 份原始图片与 GIF** 见[完整展示](assets/showcase/README.md)，包括成像采集、交互分析、降噪比较与实验协同。
+首页直接展示全部 **9 个 GIF**；原始图片与素材索引见[完整展示](assets/showcase/README.md)。
 
 ## 模型与训练
 
-大模型负责理解任务与综合结果；工具规划模型决定下一步动作；核验模型检查主张、实验条件和证据支持。知识库保留直接检索到大模型的路径，工具由服务端执行并返回可追溯结果。核验与规划分别训练，一个任务只保留一个动作决策者。
+**把领域小模型封装成 Hy3 可调用的辅助工具。** Hy3 负责理解任务、统一编排与综合决策；小模型提供专业证据提示、适用条件约束和行动建议，减少主模型对领域知识与工具环境的重复适配。知识库与原始工具结果仍可直接提供给 Hy3。
+
+| 领域训练 | 工具封装与返回 | Hy3 与环境执行 |
+| :--- | :--- | :--- |
+| 核验 SFT 学习专家标签；工具 SFT 学习操作示范，再经专家反馈与 RP-GRPO 优化 | 将核验结果与策略输出转换为证据提示、条件缺口、下一步建议及来源信息 | Hy3 综合选择行动；服务端校验权限、参数与硬规则，执行工具并回传真实结果 |
+
+“独立训练”指核验与策略使用各自的训练目标和适配器，不是两套模型同时控制同一任务。训练环境中，小策略直接生成动作；面向 Hy3 的接入中，适配层将其转换为辅助工具返回。提示层约束用于引导模型，必须遵守的规则由服务端执行。具体封装见[应用接入契约](mito/rp_grpo/INTERFACES.md#应用接入)。
 
 ### SFT → 专家反馈 → 强化学习
 
