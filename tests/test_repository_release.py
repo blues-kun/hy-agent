@@ -126,6 +126,24 @@ def test_homepage_image_tables_use_column_relative_widths():
                 assert 'width="100%"' in image, image
 
 
+def test_first200_results_are_embedded_and_protocols_remain_separate():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    stage = content.split("## 阶段结果", 1)[1].split("## 知识图谱与机制发现", 1)[0]
+    assert 'src="assets/training/first200-success-comparison.png"' in stage
+    assert 'width="820"' in stage
+    assert "74 个任务" in stage and "20 题监测集" in stage
+    assert "91.89%" in stage and "90.88%" in stage
+    assert "约 100 步训练阶段" not in stage
+    detail = (ROOT / "docs/stage-results.md").read_text(encoding="utf-8")
+    assert "历史约 100 步" in detail
+    assert "归属相反" in detail and "SFT400" in detail
+    for stem in ("first200-success-comparison", "full-validation-step200", "training-dynamics"):
+        for extension in ("png", "svg", "pdf"):
+            asset = ROOT / "assets/training" / f"{stem}.{extension}"
+            assert asset.is_file() and asset.stat().st_size > 1000
+        ET.parse(ROOT / "assets/training" / f"{stem}.svg")
+
+
 def test_math_avoids_github_renderer_incompatibilities():
     documents = [ROOT / "README.md", ROOT / "docs/training-and-evaluation.md", ROOT / "mito/rp_grpo/RP_METHOD.md"]
     # GitHub's renderer rejects operatorname and reparses text as HTML before

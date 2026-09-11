@@ -158,27 +158,41 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
 | **LOO：η=0** | 单独检查优势估计与尺度变化 |
 | **B3：RP-GRPO** | 与 LOO 对照，检验配对目标的增量 |
 
-比较时固定模型起点、工具、奖励、数据与预算，失败不从分母移除；验证集用于调参与阶段比较，后续以独立任务验证。PPO 纳入方法比较，本次公开定量结果为 **RP-GRPO 与普通 GRPO**，不把裁剪目标等同于完整 PPO 实验。
+比较时固定模型起点、工具、奖励、数据与预算，失败不从分母移除；验证集用于调参与阶段比较，后续以独立任务验证。当前展示 **GRPO、配对 GRPO、LOO 与 RP-GRPO** 四组结果；PPO 尚无本轮定量结果，不把裁剪目标等同于完整 PPO 实验。
 
 ## 阶段结果
 
-**约 100 步训练阶段 · RP-GRPO 对比普通 GRPO**
-
-| 指标 | RP-GRPO | 普通 GRPO | 变化 |
-| :--- | ---: | ---: | ---: |
-| 平均成功率 | **91.25%** | 85.00% | +6.25 个百分点 |
-| 配对成功率 | **82.50%** | 76.25% | +6.25 个百分点 |
-| 数值任务成功次数 | **13/16** | 7/16 | +6 次 |
-| 文字任务成功次数 | 60/64 | **61/64** | −1 次 |
-
-本阶段改善主要体现在数值任务，文字任务略低于普通 GRPO。表格为项目提供的阶段汇总，不自动绑定到上述代码默认配置；完整统计口径与待补运行信息见[阶段记录](docs/stage-results.md)。
+**前 200 步 · 共同 SFT100 起点 · 四组工具策略对照**
 
 <p align="center">
-  <img src="assets/training/sft-loss.png" width="720" alt="Qwen3-4B SFT 训练损失与验证集示范损失" /><br />
-  <sub>SFT 训练与验证集示范损失。图中 100 步为 SFT 学习率计划调整，与上表约 100 步 RL 不是同一节点。</sub>
+  <a href="assets/training/first200-success-comparison.png"><img src="assets/training/first200-success-comparison.png" width="820" alt="前 200 步四组工具策略在 20 题监测集上的平均成功率与双侧配对成功率" /></a><br />
+  <sub>20 题监测集 · 每题 4 次生成 · 原始评测点连线 · 点击查看原图</sub>
 </p>
 
-后续继续延长训练，补充多随机种子、独立任务与 Hy3 接入对照，并发布完整运行记录及最终强化学习权重。
+监测集上，RP-GRPO 在 75 步达到 **93.75%** 平均成功率，150 步达到 **95.00% / 90.00%** 平均／配对成功率。完整验证集单独评测，200 步结果如下：
+
+| 方法 | 完整验证集平均成功率 | 完整验证集配对成功率 |
+| :--- | ---: | ---: |
+| 普通 GRPO | **91.89%** | **86.15%** |
+| 配对 GRPO | 90.88% | 84.12% |
+| LOO 消融 | 91.55% | 85.30% |
+| RP-GRPO | 90.88% | 84.12% |
+
+完整验证集含 74 个任务，每题生成 4 次。当前监测集优势尚未在完整集形成一致领先；SFT100 / SFT400 对照、任务分项与统计口径见[完整阶段记录](docs/stage-results.md)。
+
+[主图 SVG](assets/training/first200-success-comparison.svg) · [主图 PDF](assets/training/first200-success-comparison.pdf) · [完整验证集对照](assets/training/full-validation-step200.png) · [RL 奖励与损失](assets/training/training-dynamics.png)
+
+<details>
+<summary>SFT 训练损失</summary>
+
+<p align="center">
+  <img src="assets/training/sft-loss.png" width="620" alt="Qwen3-4B SFT 训练损失与验证集示范损失" /><br />
+  <sub>SFT 损失与 RL 评测分别记录；图中 100 步为 SFT 学习率计划调整。</sub>
+</p>
+
+</details>
+
+后续补齐完整验证集检查点、多随机种子与 Hy3 接入对照。原始 Qwen 与 RP-GRPO step 200 最终 LoRA 已整理为独立发布包，网盘地址待补；Git 仅保存代码、图表与[权重加载说明](mito/models/README.md)。
 
 ## 知识图谱与机制发现
 
@@ -316,7 +330,7 @@ python -m pip install -r requirements-test.txt
 python -m pytest -q
 ```
 
-上述入口只执行公共 CPU 测试，不启动训练。GPU 训练与完整快照评测见[训练指南](mito/README.md)。本次发布包含训练实现、标注数据与展示素材；基座权重、旧适配器和内部数据不上传。
+上述入口只执行公共 CPU 测试，不启动训练。GPU 训练与完整快照评测见[训练指南](mito/README.md)。Git 仓库包含训练实现、标注数据与展示素材；原始 Qwen 与最终策略权重单独分发，旧适配器、优化器续训状态和内部数据不进入公开推理包。
 
 [核验标注](mito/data/README.md) · [历史标注](annotation_prelabel/README.md) · [完整方法与配置](docs/training-and-evaluation.md) · [最终权重接入](mito/models/README.md) · [版本记录](docs/migration-20260910.md)
 
