@@ -126,6 +126,18 @@ def test_homepage_image_tables_use_column_relative_widths():
                 assert 'width="100%"' in image, image
 
 
+def test_segmentation_comparison_captions_match_publication_labels():
+    for relative in ("README.md", "assets/showcase/README.md"):
+        content = (ROOT / relative).read_text(encoding="utf-8")
+        caption = next(line for line in content.splitlines() if "从左至右：原图、MoDL" in line)
+        plain = re.sub(r"</?em>|\*", "", caption)
+        assert "MoDL（Nat. Commun. 2025）" in plain
+        assert "Nellie（Nat. Methods 2025）" in plain
+        assert "Omnipose（Nat. Methods 2022）" in plain
+        assert plain.index("MoDL") < plain.index("Nellie") < plain.index("Omnipose") < plain.index("自研算法")
+        assert "下排为对应区域的局部放大" in plain
+
+
 def test_first200_results_are_embedded_and_protocols_remain_separate():
     content = (ROOT / "README.md").read_text(encoding="utf-8")
     stage = content.split("## 阶段结果", 1)[1].split("## 知识图谱与机制发现", 1)[0]

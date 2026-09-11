@@ -256,7 +256,7 @@ RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排�
 
 <p align="center">
   <img src="assets/showcase/segmentation-comparison.png" width="820" alt="线粒体分割比较" /><br />
-  <sub>原图、MoDL、Nellie、Omnipose、自研算法；下排为局部放大。</sub>
+  <sub>从左至右：原图、MoDL（<em>Nat. Commun.</em> 2025）、Nellie（<em>Nat. Methods</em> 2025）、Omnipose（<em>Nat. Methods</em> 2022）、自研算法。<br />下排为对应区域的局部放大。</sub>
 </p>
 
 ### 02 · 文献知识与机制探索

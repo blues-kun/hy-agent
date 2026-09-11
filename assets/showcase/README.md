@@ -14,9 +14,11 @@
 
 ![图像结果对比](denoising-interaction.gif)
 
-分割比较图从左至右：原图、MoDL、Nellie、Omnipose、自研算法；下排对应局部放大。
+分割比较图从左至右：原图、MoDL（*Nat. Commun.* 2025）、Nellie（*Nat. Methods* 2025）、Omnipose（*Nat. Methods* 2022）、自研算法。下排为对应区域的局部放大。
 
 ![线粒体分割比较](segmentation-comparison.png)
+
+方法论文：[MoDL](https://www.nature.com/articles/s41467-025-55825-x) · [Nellie](https://www.nature.com/articles/s41592-025-02612-7) · [Omnipose](https://www.nature.com/articles/s41592-022-01639-4)。
 
 | 降噪比较素材 01 | 降噪比较素材 02 | 降噪比较素材 03 |
 | --- | --- | --- |
