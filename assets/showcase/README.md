@@ -10,13 +10,15 @@
 
 ![图像分析工作流](image-analysis.gif)
 
-原图与处理结果的交互比较。
+原图分割与降噪后分割对比。
 
-![图像结果对比](denoising-interaction.gif)
+![原图分割与降噪后分割对比](denoising-interaction.gif)
 
 分割比较图从左至右：原图、MoDL（*Nat. Commun.* 2025）、Nellie（*Nat. Methods* 2025）、Omnipose（*Nat. Methods* 2022）、自研算法。下排为对应区域的局部放大。
 
 ![线粒体分割比较](segmentation-comparison.png)
+
+现有权重／默认流程从细胞或亚细胞场景直接迁移至我们的胰岛成像时，尺度与成像差异可能降低识别效果，并非原方法本身较差。胰岛内千级线粒体精细标注困难，自研方法侧重降低标注依赖、提升该场景适配性。
 
 方法论文：[MoDL](https://www.nature.com/articles/s41467-025-55825-x) · [Nellie](https://www.nature.com/articles/s41592-025-02612-7) · [Omnipose](https://www.nature.com/articles/s41592-022-01639-4)。
 
@@ -99,7 +101,7 @@ OPP 荧光、线粒体荧光及细胞核融合图；对应已有实验观察，�
 | 3 | `3_gif_02.gif` | [multimodal-assistant.gif](multimodal-assistant.gif) | 多模态交互 |
 | 3 | `3_gif_03.gif` | [literature-search.gif](literature-search.gif) | 文献检索与阅读 |
 | 4 | `4_gif.gif` | [image-analysis.gif](image-analysis.gif) | 图像检查与分割 |
-| 5 | `5_gif.gif` | [denoising-interaction.gif](denoising-interaction.gif) | 处理结果交互比较 |
+| 5 | `5_gif.gif` | [denoising-interaction.gif](denoising-interaction.gif) | 原图分割与降噪后分割对比 |
 | 5 | `5_image_02.png` | [denoising-comparison-01.png](denoising-comparison-01.png) | 降噪比较素材 01 |
 | 5 | `5_image_03.png` | [denoising-comparison-02.png](denoising-comparison-02.png) | 降噪比较素材 02 |
 | 5 | `5_image_04.png` | [denoising-comparison-03.png](denoising-comparison-03.png) | 降噪比较素材 03 |

@@ -32,6 +32,7 @@
     <text x="520" y="188">文献图谱 · RotatE 预测</text><text x="520" y="213">证据复核 · 机制假设</text>
     <text x="752" y="188">对照 · 重复 · 验证路径</text><text x="752" y="213">研究者修订与确认</text>
   </g>
+  <text x="520" y="232" font-size="12" fill="#737373">RotatE · ICLR 2019</text>
   <g font-size="15" fill="#ccc"><text x="984" y="188">实验观察与结果</text><text x="984" y="213">更新证据与假设</text></g>
   <g fill="none" stroke="#555" stroke-width="1.4" marker-end="url(#arrow)">
     <path d="M241 165H261"/><path d="M473 165H493"/><path d="M705 165H725"/><path d="M937 165H957"/>
@@ -52,10 +53,13 @@
   <text x="56" y="420" font-size="20" font-weight="600" fill="#171717">01 · 领域小模型训练</text>
   <rect x="52" y="440" width="308" height="72" rx="6" fill="#eee"/>
   <text x="66" y="466" font-size="17" font-weight="600" fill="#222">核验分支 · Verifier SFT</text>
-  <text x="66" y="493" font-size="14" fill="#626262">专家标签 → 主张支持与条件核验</text>
+  <text x="66" y="489" font-size="14" fill="#626262">专家标签 → 主张支持与条件核验</text>
+  <text x="66" y="507" font-size="11.5" fill="#737373">SFT 代表：InstructGPT / NeurIPS 2022</text>
   <rect x="52" y="524" width="308" height="82" rx="6" fill="#eee"/>
-  <text x="66" y="550" font-size="16" font-weight="600" fill="#222">策略分支 · Tool SFT → RP-GRPO</text>
-  <text x="66" y="577" font-size="14" fill="#626262">工具示范 → 专家反馈 → 真实执行优化</text>
+  <text x="66" y="547" font-size="15" font-weight="600" fill="#222">策略分支 · Tool SFT → RP-GRPO</text>
+  <text x="66" y="570" font-size="13" fill="#626262">工具示范 → 专家反馈 → 真实执行优化</text>
+  <text x="66" y="586" font-size="11.5" fill="#737373">GRPO：DeepSeekMath / arXiv 2024</text>
+  <text x="66" y="601" font-size="11.5" fill="#737373">RP-GRPO：自研</text>
   <text x="56" y="623" font-size="13" fill="#737373">两类任务分别训练 · 适配器分别管理</text>
 
   <text x="450" y="420" font-size="20" font-weight="600" fill="#171717">02 · 封装为领域辅助工具</text>

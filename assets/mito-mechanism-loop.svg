@@ -25,6 +25,7 @@
   <g class="num"><text x="56" y="114">01</text><text x="288" y="114">02</text><text x="520" y="114">03</text><text x="752" y="114">04</text></g>
   <text x="984" y="114" font-size="13" fill="#a5a5a5">05</text>
   <g class="title"><text x="56" y="150">知识图谱</text><text x="288" y="150">RotatE 预测</text><text x="520" y="150">机制推理</text><text x="752" y="150">湿实验验证</text></g>
+  <text x="288" y="169" font-size="12" fill="#737373">ICLR 2019</text>
   <text x="984" y="150" font-size="22" font-weight="600" fill="#fff">证据回流</text>
   <g class="body">
     <text x="56" y="187">实体 · 关系 · 来源</text><text x="56" y="213">保留条件与证据版本</text>

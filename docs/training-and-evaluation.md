@@ -2,6 +2,8 @@
 
 本页说明项目训练路线与公开实现的对应关系。Hy3 是应用编排主模型；本仓库实际微调基座为 **Qwen3-4B-Instruct-2507**，核验与工具策略使用独立适配器。
 
+方法出处：SFT 代表性流程参见 [InstructGPT（NeurIPS 2022）](https://proceedings.neurips.cc/paper_files/paper/2022/hash/b1efde53be364a73914f58805a001731-Abstract.html)；GRPO 来源为 [DeepSeekMath（arXiv 2024）](https://arxiv.org/abs/2402.03300)；RP-GRPO 为本项目基于 GRPO 设计的自研配对策略。SFT 是通用范式，此处引用不表示其最早起源。
+
 ## 1. 知识库初轮适配与医学专家反馈
 
 按项目负责人补充的过程：先结合知识库进行初轮模型适配，将该阶段的回答和证据说明通过邮件发送给 **5 位医学工作者**征求意见；回收的专业修订经过整理，进入后续 SFT。工具分支另外学习可执行示范，再围绕调用、停止与结果偏好开展强化学习。

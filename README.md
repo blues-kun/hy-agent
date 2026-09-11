@@ -83,7 +83,7 @@
 
 ### 01 · 知识适配与 SFT：从初轮模型到专家修订
 
-原文自监督继续预训练采用下一 token 预测；模型生成问答作为目标则属于伪标签自训练。专家修订后，SFT 学习经过整理的目标输出。
+原文自监督继续预训练采用下一 token 预测；模型生成问答作为目标则属于伪标签自训练。专家修订后，SFT 学习经过整理的目标输出。SFT 是通用训练范式，代表性文献为 [InstructGPT（NeurIPS 2022）](https://proceedings.neurips.cc/paper_files/paper/2022/hash/b1efde53be364a73914f58805a001731-Abstract.html)。
 
 ```math
 \mathcal{L}_{\mathrm{CPT}}
@@ -101,14 +101,14 @@
 
 ### 02 · GRPO → RP-GRPO：兼顾平均表现与较弱条件
 
-普通 GRPO 根据同一任务组内奖励的相对差异更新策略：
+GRPO 源于 [DeepSeekMath（arXiv 2024）](https://arxiv.org/abs/2402.03300)，根据同一任务组内奖励的相对差异更新策略：
 
 ```math
 A^{\mathrm{GRPO}}_{si}
 =\frac{R_{si}-\bar R_s}{\mathrm{std}_{pop}(R_s)+10^{-8}}
 ```
 
-基于 GRPO，我们围绕科研任务中的条件变化设计了 **RP-GRPO（Resolvability-Paired GRPO）**，将可解决性配对引入策略优化。它为同一科研目标构造不同可观察条件，例如“原文可取 / 当前材料缺失”“指标可计算 / 必要数据不足”。两侧分别执行真实工具轨迹，以配对效用兼顾平均收益和较弱一侧：
+基于 GRPO，我们围绕科研任务中的条件变化设计了自研策略 **RP-GRPO（Resolvability-Paired GRPO）**，将可解决性配对引入策略优化。它为同一科研目标构造不同可观察条件，例如“原文可取 / 当前材料缺失”“指标可计算 / 必要数据不足”。两侧分别执行真实工具轨迹，以配对效用兼顾平均收益和较弱一侧：
 
 ```math
 U_\eta(r_0,r_1)
@@ -152,11 +152,11 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
 
 | 对照 | 固定或改变的因素 |
 | :--- | :--- |
-| **B0：Tool SFT＋固定规则** | 检查规则本身能达到什么水平 |
-| **B1：Tool SFT＋GRPO** | 独立抽取任务，检验基础 RL |
+| **B0：Tool SFT＋固定规则** | 检查规则本身能达到什么水平；SFT 代表文献：[InstructGPT，NeurIPS 2022](https://proceedings.neurips.cc/paper_files/paper/2022/hash/b1efde53be364a73914f58805a001731-Abstract.html) |
+| **B1：Tool SFT＋GRPO** | 独立抽取任务，检验基础 RL；GRPO 来源：[DeepSeekMath，arXiv 2024](https://arxiv.org/abs/2402.03300) |
 | **B2：GRPO＋配对日程** | 与 B3 使用相同配对数据，隔离数据组织影响 |
 | **LOO：η=0** | 单独检查优势估计与尺度变化 |
-| **B3：RP-GRPO** | 与 LOO 对照，检验配对目标的增量 |
+| **B3：RP-GRPO（自研）** | 与 LOO 对照，检验配对目标的增量 |
 
 比较时固定模型起点、工具、奖励、数据与预算，失败不从分母移除；验证集用于调参与阶段比较，后续以独立任务验证。当前展示 **GRPO、配对 GRPO、LOO 与 RP-GRPO** 四组结果；PPO 尚无本轮定量结果，不把裁剪目标等同于完整 PPO 实验。
 
@@ -206,7 +206,7 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
 | :---: | :---: | :---: |
 | **2,234** | **379** | **732** |
 
-RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排序。随后核对来源、实验条件、支持与反向证据，形成可区分不同解释的假设；由研究者确认对照、干预和测量方案，开展湿实验。实验的**支持、反驳或未决结果**连同来源和条件回流，经复核更新关系与候选状态，为下一轮预测提供依据。
+[RotatE（ICLR 2019）](https://arxiv.org/abs/1902.10197)将实体映射到复数向量空间，以关系旋转对缺失连接排序。随后核对来源、实验条件、支持与反向证据，形成可区分不同解释的假设；由研究者确认对照、干预和测量方案，开展湿实验。实验的**支持、反驳或未决结果**连同来源和条件回流，经复核更新关系与候选状态，为下一轮预测提供依据。
 
 语言小模型训练与图谱表示学习分别进行，在推理与实验层衔接。当前已导出 **732 条候选**，工作台已展示原文定位、机制焦点、实验记录和方案草稿。后续将候选与对应湿实验逐项关联，接续验证结果与图谱反馈；候选数量不等于已验证的新机制。数据口径与预测质量见[机制发现策略](docs/mechanism-discovery.md)。
 
@@ -246,11 +246,11 @@ RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排�
 <table>
   <tr>
     <td width="50%" valign="top"><img src="assets/showcase/image-analysis.gif" width="100%" alt="图像检查与分割工作流" /></td>
-    <td width="50%" valign="top"><img src="assets/showcase/denoising-interaction.gif" width="100%" alt="原图与处理结果交互比较" /></td>
+    <td width="50%" valign="top"><img src="assets/showcase/denoising-interaction.gif" width="100%" alt="原图分割与降噪后分割对比" /></td>
   </tr>
   <tr>
     <td align="center"><sub>图像检查与分割工作流</sub></td>
-    <td align="center"><sub>原图与处理结果交互比较</sub></td>
+    <td align="center"><sub>原图分割与降噪后分割对比</sub></td>
   </tr>
 </table>
 
@@ -258,6 +258,8 @@ RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排�
   <img src="assets/showcase/segmentation-comparison.png" width="820" alt="线粒体分割比较" /><br />
   <sub>从左至右：原图、MoDL（<em>Nat. Commun.</em> 2025）、Nellie（<em>Nat. Methods</em> 2025）、Omnipose（<em>Nat. Methods</em> 2022）、自研算法。<br />下排为对应区域的局部放大。</sub>
 </p>
+
+现有权重／默认流程从细胞或亚细胞场景直接迁移至我们的胰岛成像时，尺度与成像差异可能降低识别效果，并非原方法本身较差。胰岛内千级线粒体精细标注困难，自研方法侧重降低标注依赖、提升该场景适配性。
 
 ### 02 · 文献知识与机制探索
 

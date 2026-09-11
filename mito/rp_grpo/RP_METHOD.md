@@ -1,5 +1,7 @@
 # RP-GRPO · 配对条件下的策略优化
 
+本项目自研策略 RP-GRPO 基于 [GRPO / DeepSeekMath（arXiv 2024）](https://arxiv.org/abs/2402.03300)，针对科研任务的可解决性配对扩展目标；GRPO 为已有方法，配对策略的设计与实现见下文。
+
 RP-GRPO（Resolvability-Paired Group Relative Policy Optimization）研究同一科研目标在不同可观察条件下的行动决策。它在组相对策略更新中引入配对收益：兼顾平均任务质量，以及同一问题族中较弱的一侧。
 
 ## 配对任务

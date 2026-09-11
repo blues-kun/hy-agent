@@ -191,6 +191,36 @@ def test_segmentation_comparison_captions_match_publication_labels():
         assert "下排为对应区域的局部放大" in plain
 
 
+def test_segmentation_caption_explains_transfer_context():
+    for relative in ("README.md", "assets/showcase/README.md"):
+        content = (ROOT / relative).read_text(encoding="utf-8")
+        assert "原图分割与降噪后分割对比" in content
+        assert "原图与处理结果交互比较" not in content
+        assert "现有权重／默认流程" in content
+        assert "并非原方法本身较差" in content
+        assert "千级线粒体精细标注困难" in content
+        assert "降低标注依赖" in content
+
+
+def test_method_sources_and_project_strategy_are_attributed():
+    homepage = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "InstructGPT（NeurIPS 2022）" in homepage
+    assert "SFT 是通用训练范式，代表性文献" in homepage
+    assert "DeepSeekMath（arXiv 2024）" in homepage
+    assert "RotatE（ICLR 2019）" in homepage
+    assert "B3：RP-GRPO（自研）" in homepage
+    for relative in ("assets/mito-mechanism-loop.svg", "assets/training/mito-training-route.svg",
+                     "assets/mito-workflow.svg"):
+        root = ET.parse(ROOT / relative).getroot()
+        labels = " ".join(root.itertext())
+        if "mechanism-loop" in relative or "mito-workflow" in relative:
+            assert "ICLR 2019" in labels, relative
+        if "training-route" in relative or "mito-workflow" in relative:
+            assert "NeurIPS 2022" in labels and "InstructGPT" in labels, relative
+            assert "arXiv 2024" in labels and "DeepSeekMath" in labels, relative
+            assert "自研" in labels and "RP-GRPO" in labels, relative
+
+
 def test_first200_results_are_embedded_and_protocols_remain_separate():
     content = (ROOT / "README.md").read_text(encoding="utf-8")
     stage = content.split("## 阶段结果", 1)[1].split("## 知识图谱与机制发现", 1)[0]

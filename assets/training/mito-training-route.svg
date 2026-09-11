@@ -42,6 +42,14 @@
     <text x="932" y="232">真实调用 · 条件适应</text>
     <text x="932" y="263">平均收益 + 较弱侧收益</text>
   </g>
+  <g font-size="12" fill="#737373">
+    <text x="640" y="285">SFT 代表：InstructGPT</text>
+    <text x="640" y="302">NeurIPS 2022</text>
+  </g>
+  <g font-size="12" fill="#bdbdbd">
+    <text x="932" y="285">GRPO · DeepSeekMath / arXiv 2024</text>
+    <text x="932" y="302">RP-GRPO · 自研</text>
+  </g>
   <g fill="none" stroke="#737373" stroke-width="1.4" marker-end="url(#arrow)">
     <path d="M295 208H319"/><path d="M587 208H611"/><path d="M879 208H903"/>
   </g>
