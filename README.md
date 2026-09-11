@@ -338,4 +338,6 @@ python -m pytest -q
 
 <p align="center"><sub>MITO Agent · Domain Training · Expert Feedback · Research Applications</sub></p>
 
-完整项目地址：[MITO Agent](https://agent.blueskun.com:8444/) · 如需账号和密码，请添加微信：**18299228189**。
+完整项目地址：[MITO Agent](https://agent.blueskun.com:8444/) · 测试账号：`admin` · 测试密码：`123456`
+
+源码获取与合作联系：[blues924@outlook.com](mailto:blues924@outlook.com) · 微信：**18299228189**。

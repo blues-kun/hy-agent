@@ -61,8 +61,13 @@ def test_project_access_and_contact_are_at_the_end():
     content = (ROOT / "README.md").read_text(encoding="utf-8")
     project_url = "https://agent.blueskun.com:8444/"
     assert content.count(project_url) == 1
+    footer = content.rsplit("\n---\n", 1)[-1]
+    assert project_url in footer
+    assert "测试账号：`admin`" in footer and "测试密码：`123456`" in footer
+    assert "如需账号和密码" not in footer
     last_line = content.strip().splitlines()[-1]
-    assert project_url in last_line
+    assert "源码获取与合作联系" in last_line
+    assert "mailto:blues924@outlook.com" in last_line
     assert "微信" in last_line and "18299228189" in last_line
 
 
