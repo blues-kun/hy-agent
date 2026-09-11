@@ -67,7 +67,7 @@ def test_project_access_and_contact_are_at_the_end():
 
 
 def test_training_inventory_distinguishes_tasks_actions_and_sft_start():
-    documents = [ROOT / "README.md", ROOT / "docs/training-and-evaluation.md", ROOT / "mito/rp_grpo/README.md"]
+    documents = [ROOT / "docs/training-and-evaluation.md", ROOT / "mito/rp_grpo/README.md"]
     for document in documents:
         content = document.read_text(encoding="utf-8")
         for value in ("268 个", "134 对", "74 个", "37 对", "5,370", "1,282",
@@ -75,6 +75,18 @@ def test_training_inventory_distinguishes_tasks_actions_and_sft_start():
                       "SFT100", "SFT400"):
             assert value in content, (document, value)
         assert "旧" in content and "443" in content and "51" in content
+
+
+def test_homepage_raw_action_summary_keeps_split_and_filtering_context():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    summary = content.split("### 原始工具训练数据", 1)[1].split("## 微调模型", 1)[0]
+    assert "6,652 条原始工具 SFT 动作记录（训练集与开发集合计）" in summary
+    assert "| 训练集 | **5,370 条** |" in summary
+    assert "| 开发集 | **1,282 条** |" in summary
+    assert "过滤前的动作数" in summary
+    assert "不是独立任务数或专家标注量" in summary
+    assert "docs/training-and-evaluation.md#本轮工具训练数据" in summary
+    assert "当前 RL 仍从 SFT100 初始化" in content
 
 
 def test_homepage_prioritizes_training_and_keeps_showcase_compact():
