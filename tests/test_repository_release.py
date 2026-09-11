@@ -77,15 +77,14 @@ def test_training_inventory_distinguishes_tasks_actions_and_sft_start():
         assert "旧" in content and "443" in content and "51" in content
 
 
-def test_homepage_raw_action_summary_keeps_split_and_filtering_context():
+def test_homepage_raw_action_summary_keeps_raw_label_and_split():
     content = (ROOT / "README.md").read_text(encoding="utf-8")
     summary = content.split("### 原始工具训练数据", 1)[1].split("## 微调模型", 1)[0]
     assert "6,652 条原始工具 SFT 动作记录（训练集与开发集合计）" in summary
     assert "| 训练集 | **5,370 条** |" in summary
     assert "| 开发集 | **1,282 条** |" in summary
-    assert "过滤前的动作数" in summary
-    assert "不是独立任务数或专家标注量" in summary
-    assert "docs/training-and-evaluation.md#本轮工具训练数据" in summary
+    assert "| 分区 | 原始动作记录 |" in summary
+    assert "以上为预算与长度" not in summary
     assert "当前 RL 仍从 SFT100 初始化" in content
 
 
