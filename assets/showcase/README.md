@@ -2,7 +2,15 @@
 
 [返回项目首页](../../README.md)
 
-收录项目展示材料中的全部 26 份现存媒体：17 张 PNG、9 个 GIF。文件保留原始字节、分辨率与动画时序，仅统一为英文文件名；点击图片可查看原件。
+收录项目展示材料与完整使用演示，共 27 份媒体：17 张 PNG、10 个 GIF。文件保留原始字节、分辨率与动画时序，仅统一为英文文件名；点击图片可查看原件。
+
+## 完整项目演示
+
+从数据分析、人工修订到文献与图谱检索，展示科研工具与工作流的协同使用。时长约 1 分 59 秒。
+
+<p align="center">
+  <a href="full-project-demo.gif"><img src="full-project-demo.gif" width="480" alt="完整项目使用演示：数据分析、人工修订、数字人协同与文献图谱检索" /></a>
+</p>
 
 ## 图像分析与报告
 
@@ -87,10 +95,11 @@ OPP 荧光、线粒体荧光及细胞核融合图；对应已有实验观察，�
 
 ## 来源索引
 
-来源页码与原文件名对应项目演示材料的逐页媒体提取记录；图片中的内容与标注保持原样。
+来源页码与原文件名对应项目演示材料的逐页媒体提取记录；另收录用户补充的完整使用演示。图片中的内容与标注保持原样。
 
 | 来源页 | 原文件名 | 仓库文件 | 内容 |
 | --- | --- | --- | --- |
+| 补充演示 | `7月29日.gif` | [full-project-demo.gif](full-project-demo.gif) | 完整项目使用流程 |
 | 1 | `1_image_02.png` | [diabetes-background.png](diabetes-background.png) | 糖尿病研究背景 |
 | 1 | `1_image_03.png` | [beta-cell-insulin.png](beta-cell-insulin.png) | β细胞与胰岛素分泌 |
 | 1 | `1_image_04.png` | [mitochondrial-metabolism.png](mitochondrial-metabolism.png) | 线粒体代谢与分泌 |

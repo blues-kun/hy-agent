@@ -32,7 +32,7 @@ def test_documentation_local_links_resolve():
 def test_showcase_contains_all_original_media():
     media = list((ROOT / "assets/showcase").glob("*.png")) + list((ROOT / "assets/showcase").glob("*.gif"))
     assert len([p for p in media if p.suffix == ".png"]) == 17
-    assert len([p for p in media if p.suffix == ".gif"]) == 9
+    assert len([p for p in media if p.suffix == ".gif"]) == 10
     assert all(0 < p.stat().st_size < 100 * 1024**2 for p in media)
     assert (ROOT / "assets/showcase/digital-human.gif").is_file()
 
@@ -55,6 +55,23 @@ def test_homepage_displays_selected_gifs_and_preserves_original_gallery():
     assert content.count('src="assets/showcase/mechanism-hypotheses.png"') == 1
     gallery = (ROOT / "assets/showcase/README.md").read_text(encoding="utf-8")
     assert gif_images(gallery) == sorted(p.name for p in (ROOT / "assets/showcase").glob("*.gif"))
+
+
+def test_full_project_demo_is_centered_before_the_application_workflow():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    demo = "assets/showcase/full-project-demo.gif"
+    paragraphs = re.findall(r"<p\b[^>]*>.*?</p>", content, flags=re.S | re.I)
+    paragraph, = [block for block in paragraphs if f'src="{demo}"' in block]
+    assert 'align="center"' in paragraph.split(">", 1)[0]
+    assert "完整项目演示" in paragraph
+    image = re.search(r'<img\b[^>]*src="' + re.escape(demo) + r'"[^>]*>', paragraph)
+    assert image is not None and 'width="480"' in image.group()
+    assert re.search(r'<a\b[^>]*href="' + re.escape(demo)
+                     + r'"[^>]*>\s*' + re.escape(image.group()) + r'\s*</a>', paragraph)
+    assert (content.index("## 实际场景与落地") < content.index(paragraph)
+            < content.index('src="assets/mito-workflow.svg"'))
+    for table in re.findall(r"<table\b[^>]*>.*?</table>", content, flags=re.S | re.I):
+        assert demo not in table
 
 
 def test_project_access_and_contact_are_at_the_end():

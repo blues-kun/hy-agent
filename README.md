@@ -217,6 +217,12 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
 训练后的领域能力面向线粒体科研工作台：**显微成像 → 表型解析 → 文献与机制 → 实验规划 → 湿实验反馈**。
 
 <p align="center">
+  <strong>完整项目演示 · 1 分 59 秒</strong><br /><br />
+  <a href="assets/showcase/full-project-demo.gif"><img src="assets/showcase/full-project-demo.gif" width="480" alt="完整项目使用演示：数据分析、人工修订、数字人协同与文献图谱检索" /></a><br />
+  <sub>从数据分析、人工修订到文献与图谱检索，展示科研工具与工作流的协同使用。</sub>
+</p>
+
+<p align="center">
   <img src="assets/mito-workflow.svg" width="900" alt="MITO Agent 科研场景闭环及领域小模型辅助 Hy3 的应用架构" />
 </p>
 
