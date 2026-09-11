@@ -281,7 +281,7 @@ RotatE 将实体映射到复数向量空间，以关系旋转对缺失连接排�
 
 <p align="center">
   <a href="assets/showcase/mechanism-hypotheses.png"><img src="assets/showcase/mechanism-hypotheses.png" width="620" alt="机制焦点：围绕线粒体展示文献关系、RotatE 模型候选与人工提出的待验证关联" /></a><br />
-  <sub>机制焦点 · 文献关系、模型候选与待验证关联分层查看</sub>
+  <sub>基于知识图谱训练的模型预测潜在实体关系，辅助下一轮实验设计，形成科研闭环。</sub>
 </p>
 
 **从候选连接走向机制问题。** 例如，RotatE 输出“线粒体 → 促进 → FoxO1 与自噬基因启动子的结合”，供模型追查支持证据、适用条件与反向解释，再组织可检验的假设。界面中的 OPP／蛋白合成关联另属人工假设，与模型候选分别记录。
