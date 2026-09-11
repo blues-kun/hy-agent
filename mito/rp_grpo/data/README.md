@@ -20,7 +20,7 @@
 
 ## 一致性要求
 
-任务与配对变体按来源或实验组划分 train/dev；同一问题族不跨区。模型仅接收 `actor_observation` 与真实工具返回，不接收 `pair_id`、侧别、目标原文 ID、评分标签或未来步骤的信息。
+任务与配对变体按来源或实验组划分为训练集（`train`）与验证集（`dev`）；同一问题族不跨区。模型仅接收 `actor_observation` 与真实工具返回，不接收 `pair_id`、侧别、目标原文 ID、评分标签或未来步骤的信息。
 
 `MANIFEST.json` 的版本与 `build_data.py::VERSION` 一致，`files` 保存受检文件名及 SHA-256。环境检查文件内容、视图哈希与任务登记；工具 SFT 还检查 `REFERENCE_MANIFEST.json` 的 `dataset_manifest_sha256`、执行与独立重放状态，并实际重放参考路径。
 

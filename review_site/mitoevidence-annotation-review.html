@@ -2377,7 +2377,7 @@ footer nav a:hover {
             正在核验研究问题、证据主张、写作规则与种子综述……
           </p>
           <div class="hero__badges" aria-label="数据属性">
-            <span>单一专家汇总结果</span>
+            <span>单份合并专家参考</span>
             <span>逐文件哈希核验</span>
             <span>只读展示</span>
           </div>
@@ -2586,7 +2586,7 @@ footer nav a:hover {
           </section>
           <section>
             <strong>专家结构</strong>
-            <p>每条只有一个汇总结论，没有专家 A/B 的独立列，不能计算专家间 κ、ICC 或一致率。</p>
+            <p>每条记录提供单份合并专家参考，没有专家 A/B 的独立列，不能计算专家间 κ、ICC 或一致率。</p>
           </section>
           <section>
             <strong>历史字段</strong>
@@ -3098,7 +3098,7 @@ function renderMetrics() {
     total,
     element("span", "", "全部参考记录"),
     element("strong", "", state.payload.summary.total_records),
-    element("small", "", "4 类 · 单一汇总专家结果"),
+    element("small", "", "4 类 · 单份合并专家参考"),
     element("p", "metric__purpose", "从研究问题到文献来源的完整参考快照"),
   );
   total.addEventListener("click", () => chooseDataset("all"));
@@ -3598,7 +3598,7 @@ function provenanceDetails(record) {
   details.append(element("summary", "", "查看标注身份、历史字段与文件哈希"));
   const strip = element("div", "provenance-strip");
   const provenance = [
-    ["快照层指定", `项目负责人确认的单一汇总参考（${state.payload.manifest.designation}）`],
+    ["快照层指定", `项目负责人确认的单份合并专家参考（${state.payload.manifest.designation}）`],
     ["源记录 annotator（历史字段）", record.record.annotator],
     ["源记录 review_status（历史字段）", record.record.review_status],
     ["本页源数据 SHA-256", record.datasetMeta.source_sha256],
@@ -3806,7 +3806,7 @@ function renderClaim(record) {
   }
   return [
     section("候选关系", "仅表达被审记录，不自动等同于事实", triple),
-    section("完整判定理由", "单一汇总结果", factGrid([
+    section("完整判定理由", "单份合并专家参考", factGrid([
       ["结论", labelStatus(row.ai_decision)],
       ["置信度", labelStatus(row.ai_confidence)],
       ["可用于 β 细胞证据", row.usable_for_beta_cell_evidence],

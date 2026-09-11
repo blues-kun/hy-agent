@@ -202,7 +202,7 @@ D_t=e^{d_t}-d_t-1,\quad d_t=\log\pi_{\mathrm{ref}}-\log\pi_\theta .
   <img src="assets/mito-mechanism-loop.svg" width="100%" alt="知识图谱、RotatE 候选关联、机制推理、湿实验验证、证据回流的闭环设计" />
 </p>
 
-| 已有图谱关系 | RotatE 建模子集 | 导出候选关联 |
+| 原图谱去重三元组 | RotatE 训练三元组 | 导出候选三元组 |
 | :---: | :---: | :---: |
 | **2,234** | **379** | **732** |
 

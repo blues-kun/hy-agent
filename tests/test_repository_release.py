@@ -140,6 +140,45 @@ def test_annotation_example_label_is_consistent():
     assert examples.startswith("# 标注样例\n")
 
 
+def test_chinese_validation_terms_and_current_stage_are_consistent():
+    documents = [ROOT / "README.md", ROOT / "annotation_prelabel/README.md"]
+    for directory in ("docs", "mito", "assets", "review_site"):
+        documents.extend((ROOT / directory).rglob("*.md"))
+    for document in documents:
+        content = document.read_text(encoding="utf-8")
+        for obsolete in ("开发集", "开发记录", "开发评测", "开发/测试"):
+            assert obsolete not in content, (document, obsolete)
+    for relative in ("mito/README.md", "mito/rp_grpo/README.md",
+                     "mito/rp_grpo/RP_METHOD.md", "docs/training-and-evaluation.md"):
+        content = (ROOT / relative).read_text(encoding="utf-8")
+        assert "前 200 步" in content, relative
+    stage = (ROOT / "docs/stage-results.md").read_text(encoding="utf-8")
+    assert "## 历史约 100 步：RP-GRPO 与普通 GRPO" in stage
+    assert "SFT100" in stage and "SFT400" in stage
+    assert "dev.jsonl" in (ROOT / "mito/data/README.md").read_text(encoding="utf-8")
+
+
+def test_review_pages_describe_consolidation_not_expert_count():
+    for relative in ("review_site/index.html", "review_site/app.js",
+                     "review_site/mitoevidence-annotation-review.html"):
+        content = (ROOT / relative).read_text(encoding="utf-8")
+        assert "单份合并专家参考" in content, relative
+        assert "单一专家" not in content, relative
+        assert "单一汇总专家" not in content, relative
+
+
+def test_graph_statistics_distinguish_triples_from_relation_types():
+    for relative in ("README.md", "docs/mechanism-discovery.md"):
+        content = (ROOT / relative).read_text(encoding="utf-8")
+        for label in ("原图谱去重三元组", "RotatE 训练三元组", "导出候选三元组"):
+            assert label in content, (relative, label)
+        for value in ("2,234", "379", "732"):
+            assert value in content, (relative, value)
+    detail = (ROOT / "docs/mechanism-discovery.md").read_text(encoding="utf-8")
+    assert "28 种关系类型" in detail
+    assert "头实体—关系—尾实体" in detail
+
+
 def test_segmentation_comparison_captions_match_publication_labels():
     for relative in ("README.md", "assets/showcase/README.md"):
         content = (ROOT / relative).read_text(encoding="utf-8")

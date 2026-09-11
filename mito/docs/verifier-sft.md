@@ -51,6 +51,6 @@ python code/compare_verifier_finetune.py \
   --train data/train.jsonl --out runs/verifier-comparison-v1.json
 ```
 
-比较同一输入与证据下的逐类指标、误支持、过度保留判断、结构有效率与截断情况。开发集没有 `mixed`，因此该类的缺失应保留在报告中；解释与改写的科学质量需单独评估。
+比较同一输入与证据下的逐类指标、误支持、过度保留判断、结构有效率与截断情况。验证集没有 `mixed`，因此该类的缺失应保留在报告中；解释与改写的科学质量需单独评估。
 
 本实现保留运行和 checkpoint 产物，但不提供完整 optimizer/RNG 断点恢复契约。最终发布时补充基座版本、adapter 哈希、训练配置与对应评测记录。

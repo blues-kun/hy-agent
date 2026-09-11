@@ -3,7 +3,7 @@
 | 文件 | 来源 | 内容 |
 | :--- | :--- | :--- |
 | [mito-training-route.svg](mito-training-route.svg) | 项目训练路线与本次补充的专家反馈流程 | 知识库适配、双分支 SFT、RP-GRPO 与 Hy3 接入 |
-| [sft-loss.png](sft-loss.png) | 项目提供的 `loss.png` | Qwen3-4B SFT 训练损失与开发集示范损失 |
+| [sft-loss.png](sft-loss.png) | 项目提供的 `loss.png` | Qwen3-4B SFT 训练损失与验证集示范损失 |
 | [first200-success-comparison.png](first200-success-comparison.png) | 项目提供的前 200 步 Excel 展示页，使用 R 绘制 | 20 题监测集的 avg@4 与双侧配对成功率 |
 | [full-validation-step200.png](full-validation-step200.png) | 同批完整验证集与 SFT 对照记录 | 74 题完整验证集的四组 200 步结果、SFT100 与 SFT400 |
 | [training-dynamics.png](training-dynamics.png) | 同批训练日志，使用 R 绘制 | 此前 25 步窗口均值的训练奖励与策略损失 |

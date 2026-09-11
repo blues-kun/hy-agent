@@ -10,7 +10,7 @@
 | 工具 SFT | 读取真实返回，选择下一步工具与参数 | [执行指南](rp_grpo/README.md) |
 | GRPO / RP-GRPO | 在配对科研条件下优化成功率与执行成本 | [方法定义](rp_grpo/RP_METHOD.md) |
 
-本目录发布源码、测试、实验配置和已整理的[核验标注](data/README.md)。已展示项目提供的[约 100 步 RP-GRPO / GRPO 阶段结果与 SFT 损失](../docs/stage-results.md)；训练持续推进，最终权重与完整运行记录后续补充。基座、旧适配器、RP 原文与测量快照另行准备。
+本目录发布源码、测试、实验配置和已整理的[核验标注](data/README.md)。当前展示[前 200 步阶段结果与 SFT 损失](../docs/stage-results.md)，历史约 100 步汇总单列保留。原始 Qwen 底座与最终 RP-GRPO step200 LoRA 已整理为独立发布包，网盘下载链接待补，见[模型与权重说明](models/README.md)。训练持续推进，完整运行记录后续补充；旧适配器、RP 原文与测量快照另行准备。
 
 知识库初轮适配、五位医学工作者邮件征询、专家修订 SFT 与工具策略 RL 的衔接，见[训练与评测说明](../docs/training-and-evaluation.md)。该页同时区分原文自监督、合成数据自训练和现有公开数据的逐条来源。
 
