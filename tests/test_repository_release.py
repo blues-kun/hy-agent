@@ -131,6 +131,20 @@ def test_homepage_image_tables_use_column_relative_widths():
                 assert 'width="100%"' in image, image
 
 
+def test_hy3_tool_workflow_design_distinguishes_current_and_future_training():
+    homepage = (ROOT / "README.md").read_text(encoding="utf-8")
+    interfaces = (ROOT / "mito/rp_grpo/INTERFACES.md").read_text(encoding="utf-8")
+    assert "医学文献综述、证据核验与实验方案设计" in homepage
+    section = homepage.split("### 01 · 科研工具与 Skill 工作流", 1)[1].split("<table>", 1)[0]
+    for label in ("Tool · 单步能力", "Workflow · 执行路径", "Skill · 任务封装"):
+        assert label in section
+    assert "影像处理、文档解析及复合 Skill 属于后续接入与训练扩展" in section
+    assert "5 个只读取证／统计工具" in interfaces
+    assert "`finalize`、`stop` 两个控制动作" in interfaces
+    assert "不能视为已包含在前 200 步实验中" in interfaces
+    assert "不将当前工具策略成功率替代整套应用评估方法的有效性验证" in interfaces
+
+
 def test_annotation_example_label_is_consistent():
     homepage = (ROOT / "README.md").read_text(encoding="utf-8")
     examples = (ROOT / "annotation_prelabel/README.md").read_text(encoding="utf-8")
