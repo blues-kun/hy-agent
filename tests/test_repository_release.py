@@ -126,6 +126,15 @@ def test_homepage_image_tables_use_column_relative_widths():
                 assert 'width="100%"' in image, image
 
 
+def test_annotation_example_label_is_consistent():
+    homepage = (ROOT / "README.md").read_text(encoding="utf-8")
+    examples = (ROOT / "annotation_prelabel/README.md").read_text(encoding="utf-8")
+    assert "annotation_prelabel/     # 标注样例" in homepage
+    assert "[标注样例](annotation_prelabel/README.md)" in homepage
+    assert "历史 127 条参考标注" not in homepage
+    assert examples.startswith("# 标注样例\n")
+
+
 def test_segmentation_comparison_captions_match_publication_labels():
     for relative in ("README.md", "assets/showcase/README.md"):
         content = (ROOT / relative).read_text(encoding="utf-8")

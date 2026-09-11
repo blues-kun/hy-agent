@@ -320,7 +320,7 @@ hy-agent/
 │   └── tests/               # 算法、数据与流程测试
 ├── assets/                  # 训练路线、损失图与原始展示素材
 ├── docs/                    # 方法、标注流程与阶段记录
-└── annotation_prelabel/     # 历史 127 条参考标注
+└── annotation_prelabel/     # 标注样例
 ```
 
 ```bash
@@ -332,7 +332,7 @@ python -m pytest -q
 
 上述入口只执行公共 CPU 测试，不启动训练。GPU 训练与完整快照评测见[训练指南](mito/README.md)。Git 仓库包含训练实现、标注数据与展示素材；原始 Qwen 与最终策略权重单独分发，旧适配器、优化器续训状态和内部数据不进入公开推理包。
 
-[核验标注](mito/data/README.md) · [历史标注](annotation_prelabel/README.md) · [完整方法与配置](docs/training-and-evaluation.md) · [最终权重接入](mito/models/README.md) · [版本记录](docs/migration-20260910.md)
+[核验标注](mito/data/README.md) · [标注样例](annotation_prelabel/README.md) · [完整方法与配置](docs/training-and-evaluation.md) · [最终权重接入](mito/models/README.md) · [版本记录](docs/migration-20260910.md)
 
 ---
 

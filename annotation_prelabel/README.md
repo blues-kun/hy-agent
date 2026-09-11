@@ -1,4 +1,4 @@
-# 历史专家参考标注
+# 标注样例
 
 [在线浏览](https://blues-kun.github.io/hy-agent/) · [原始校验清单](expert_gold_manifest.json) · [当前核验训练数据](../mito/data/README.md)
 
